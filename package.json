@@ -1,0 +1,18 @@
+{
+  "name": "notebook-price-painel",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "api",
+    "scrapers"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "build": "pnpm -r run build",
+    "db:studio": "pnpm --filter api run db:studio",
+    "db:push": "pnpm --filter api run db:push"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
