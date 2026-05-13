@@ -66,5 +66,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-12
-Stopped at: Roadmap created, ready for Phase 1 planning
-Resume file: None
+Stopped at: Phase 1 context gathered (auto mode)
+Resume file: .planning/phases/01-foundation-mvp/01-CONTEXT.md
