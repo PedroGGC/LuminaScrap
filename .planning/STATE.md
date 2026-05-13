@@ -67,4 +67,4 @@ None yet.
 
 Last session: 2026-05-12
 Stopped at: Phase 1 context gathered (auto mode)
-Resume file: .planning/phases/01-foundation-mvp/01-CONTEXT.md
+Resume file: .planning/phases/01-foundation-mvp/01-UI-SPEC.md
