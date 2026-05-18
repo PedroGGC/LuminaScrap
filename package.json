@@ -7,12 +7,16 @@
     "scrapers"
   ],
   "scripts": {
-    "dev": "pnpm --parallel -r run dev",
-    "build": "pnpm -r run build",
-    "db:studio": "pnpm --filter api run db:studio",
-    "db:push": "pnpm --filter api run db:push"
+    "dev": "bun --parallel --filter api --filter scrapers run dev",
+    "build": "bun -r run build",
+    "db:push": "bun --filter api run db:push"
   },
   "engines": {
-    "node": ">=20"
+    "bun": ">=1.0"
+  },
+  "packageManager": "bun@1.0.0",
+  "devDependencies": {
+    "@types/node": "^25.7.0",
+    "drizzle-kit": "^0.31.10"
   }
 }
