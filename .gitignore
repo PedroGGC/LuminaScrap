@@ -7,9 +7,9 @@ dist/
 build/
 
 # Environment
-.env
-.env.local
-.env.*.local
+*.env
+
+
 
 # IDE
 .idea/
@@ -17,19 +17,22 @@ build/
 *.swp
 *.swo
 
-# OS
-.DS_Store
-Thumbs.db
-
 # Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
 # Testing
 coverage/
+test-db.ts
 
 # Misc
 *.tsbuildinfo
 next-env.d.ts
+*.planning/
+relatorio-scraper-painel.md
+AGENTS.md
+.github/
+
+# Planning
+.planning/
