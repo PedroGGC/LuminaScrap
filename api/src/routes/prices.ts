@@ -1,7 +1,7 @@
 import { Type } from '@sinclair/typebox';
 import { FastifyInstance } from 'fastify';
-import { db } from '../db/index.js';
-import { prices, products } from '../db/schema.js';
+import { db } from '../db/index';
+import { prices, products } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 export async function pricesRouter(fastify: FastifyInstance) {

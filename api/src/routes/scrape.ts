@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import { FastifyInstance } from 'fastify';
-import { scrapeAll } from '../../scrapers/src/index.js';
+import { scrapeAll } from '../../../scrapers/src/index';
 
 export async function scrapeRouter(fastify: FastifyInstance) {
   fastify.post('/scrape', {

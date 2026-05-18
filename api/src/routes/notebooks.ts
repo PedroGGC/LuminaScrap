@@ -1,84 +1,44 @@
 import { Type } from '@sinclair/typebox';
 import { FastifyInstance } from 'fastify';
-import { db } from '../db/index.js';
-import { products, notebooks, prices } from '../db/schema.js';
-import { eq, desc, and, gte, lte, like, or } from 'drizzle-orm';
+import { db, sql } from '../db/index';
+import { products } from '../db/schema';
 
 export async function notebooksRouter(fastify: FastifyInstance) {
   fastify.get('/notebooks', {
     schema: {
       querystring: Type.Object({
-        cpu: Type.Optional(Type.String()),
-        gpu: Type.Optional(Type.String()),
-        ramMin: Type.Optional(Type.String()),
-        ramMax: Type.Optional(Type.String()),
-        brand: Type.Optional(Type.String()),
-        priceMin: Type.Optional(Type.Number()),
-        priceMax: Type.Optional(Type.Number()),
-        search: Type.Optional(Type.String()),
         page: Type.Optional(Type.Number({ default: 1 })),
         limit: Type.Optional(Type.Number({ default: 50 })),
-        sort: Type.Optional(Type.Enum({ price_asc: 'price_asc', price_desc: 'price_desc', name: 'name' })),
       }),
     },
   }, async (request) => {
-    const { cpu, gpu, ramMin, ramMax, brand, priceMin, priceMax, search, page = 1, limit = 50, sort } = request.query as any;
+    const { page = 1, limit = 50 } = request.query as any;
+    const limitNum = Number(limit) || 50;
+    const offsetNum = (Number(page) - 1) * limitNum;
 
-    const offset = (page - 1) * limit;
+    console.log('[DEBUG] limit:', limitNum, 'offset:', offsetNum);
+    console.log('[DEBUG] db:', !!db, 'sql:', !!sql);
 
-    const conditions: any[] = [];
+    try {
+      // Use raw SQL - drizzle query builder has issues with neon-serverless
+      const rawResult = await sql!`SELECT * FROM products LIMIT ${limitNum} OFFSET ${offsetNum}`;
+      console.log('[DEBUG] raw SQL result:', rawResult.length);
 
-    if (cpu) conditions.push(eq(notebooks.cpu, cpu));
-    if (gpu) conditions.push(eq(notebooks.gpu, gpu));
-    if (brand) conditions.push(eq(notebooks.marca, brand));
-    if (search) conditions.push(like(products.nome, `%${search}%`));
+      const countResult = await sql!`SELECT COUNT(*) as count FROM products`;
+      console.log('[DEBUG] count:', countResult);
 
-    const priceConditions = [];
-    if (priceMin || priceMax) {
-      const latestPrices = db.select({
-        productId: prices.productId,
-        valor: prices.valor,
-      })
-        .from(prices)
-        .orderBy(desc(prices.scrapedAt))
-        .prepare('latest_prices');
-
-      // Simple price filtering (would need subquery in production)
+      return {
+        data: rawResult,
+        pagination: {
+          page,
+          limit: limitNum,
+          total: Number(countResult[0]?.count) || 0,
+        },
+      };
+    } catch (e: any) {
+      console.error('[DEBUG] Error:', e.message);
+      throw e;
     }
-
-    const result = await db
-      .select({
-        id: products.id,
-        nome: products.nome,
-        url: products.url,
-        site: products.site,
-        cpu: notebooks.cpu,
-        gpu: notebooks.gpu,
-        ram: notebooks.ram,
-        storageType: notebooks.storageType,
-        storageSize: notebooks.storageSize,
-        tela: notebooks.tela,
-        marca: notebooks.marca,
-        price: prices.valor,
-        scrapedAt: prices.scrapedAt,
-      })
-      .from(products)
-      .leftJoin(notebooks, eq(products.id, notebooks.productId))
-      .leftJoin(prices, eq(products.id, prices.productId))
-      .where(conditions.length ? and(...conditions) : undefined)
-      .limit(limit)
-      .offset(offset);
-
-    const countResult = await db.select({ count: () => products.id }).from(products);
-
-    return {
-      data: result,
-      pagination: {
-        page,
-        limit,
-        total: countResult[0]?.count || 0,
-      },
-    };
   });
 
   fastify.get('/notebooks/:id', {
@@ -90,24 +50,7 @@ export async function notebooksRouter(fastify: FastifyInstance) {
   }, async (request) => {
     const { id } = request.params as { id: string };
 
-    const result = await db
-      .select({
-        id: products.id,
-        nome: products.nome,
-        url: products.url,
-        site: products.site,
-        cpu: notebooks.cpu,
-        gpu: notebooks.gpu,
-        ram: notebooks.ram,
-        storageType: notebooks.storageType,
-        storageSize: notebooks.storageSize,
-        tela: notebooks.tela,
-        marca: notebooks.marca,
-      })
-      .from(products)
-      .leftJoin(notebooks, eq(products.id, notebooks.productId))
-      .where(eq(products.id, id))
-      .limit(1);
+    const result = await sql!`SELECT * FROM products WHERE id = ${id} LIMIT 1`;
 
     if (!result.length) {
       throw { statusCode: 404, message: 'Notebook not found' };

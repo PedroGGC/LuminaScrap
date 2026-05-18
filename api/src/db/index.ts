@@ -5,10 +5,12 @@ import * as schema from './schema';
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error('DATABASE_URL is not set');
+  console.warn('DATABASE_URL not set');
 }
 
-const sql = neon(connectionString);
-export const db = drizzle(sql, { schema });
+const sql = connectionString ? neon(connectionString) : null;
+const db = sql ? drizzle(sql, { schema }) : null;
+
+export { db, sql };
 
 export type Database = typeof db;
