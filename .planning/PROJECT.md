@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Hardware aggregator focused on usability and perfect filters. Web scraper runs locally to scan retailers (Pichau, Terabyte), extract data, apply ETL/normalization with Zod, and generate consolidated `produtos.json` file served to React/Next.js frontend.
+Hardware aggregator focused on usability and perfect filters. Web scraper runs locally to scan multiple retailers (starting with Pichau and Terabyte, built for easy expansion to others), extract data, apply ETL/normalization with Zod, and generate consolidated `produtos.json` file served to React/Next.js frontend.
 
 ## Core Value
 
@@ -31,6 +31,7 @@ Instant client-side hardware filtering with zero hosting infrastructure cost.
 - Hybrid serverless setup with local scraper execution
 - High-performance client-side logic to handle filtering in-memory
 - Avoid complex hosting requirements by deploying static JSON artifact
+- Scraper architecture must be modular to support easy addition of new retailers over time
 
 ## Constraints
 
