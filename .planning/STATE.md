@@ -12,7 +12,7 @@ last_activity_desc: Project initialization and roadmap creation
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 6
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 1 of 3 (Scraper Core & Specs ETL)
-Plan: 0 of 3 in current phase
+Plan: 0 of 1 in current phase
 Status: Ready to execute
 Last activity: 2026-06-18 — Project initialization and roadmap creation
 
@@ -47,7 +47,7 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 3 | 0 min | 0 min |
+| 1 | 1 | 0 min | 0 min |
 | 2 | 2 | 0 min | 0 min |
 | 3 | 1 | 0 min | 0 min |
 
