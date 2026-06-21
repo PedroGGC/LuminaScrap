@@ -1,0 +1,22 @@
+{
+  "name": "pc-scraper",
+  "version": "1.0.0",
+  "description": "Web scraper for hardware aggregator",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "scrape": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "commander": "^11.1.0",
+    "playwright": "^1.42.1",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "tsx": "^4.7.1"
+  }
+}
