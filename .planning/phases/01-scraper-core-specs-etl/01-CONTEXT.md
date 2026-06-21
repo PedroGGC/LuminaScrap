@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Establish local scraper executable compiling validated CPU and GPU specifications into `produtos.json` from KaBuM!, Pichau, Terabyte, Bench Promos, Mercado Livre, Amazon, Shopee, and AliExpress. Scraper must be modular to easily support additional retailers in the future.
+Establish local scraper executable compiling validated CPU and GPU specifications into `produtos.json` from Tier 1 (KaBuM!, Pichau, Terabyte) and Tier 2 (Bench Promos) sources. Scraper must be modular to easily support additional retailers (like Tier 3) in the future.
 
 </domain>
 
@@ -25,10 +25,9 @@ Establish local scraper executable compiling validated CPU and GPU specification
 - **D-07:** Output must be a consolidated `produtos.json` file.
 
 ### Multi-Tier Crawling Architecture
-- **D-08:** Implement crawlers spanning three tiers:
+- **D-08:** Implement crawlers spanning initial tiers:
   - **Tier 1:** KaBuM! (React backend API interception), Pichau (Playwright dynamic cards), and Terabyte (Cheerio/Playwright hybrid).
   - **Tier 2:** Bench Promos (Affiliate URL resolver).
-  - **Tier 3:** Mercado Livre (keyword-search, condition new, official/platinum stores), Amazon & Shopee (dynamic handling), and AliExpress (tax calculation - Remessa Conforme, force BRL/BR shipping).
 
 ### the agent's Discretion
 - Code folder structure inside `scraper/`.
@@ -69,6 +68,7 @@ Establish local scraper executable compiling validated CPU and GPU specification
 ## Deferred Ideas
 
 - Next.js frontend website design & client-side filtering — Phase 2
+- Tier 3 Mass & Global Marketplaces (Mercado Livre, Amazon, Shopee, AliExpress) — Phase 3 (postponed due to complexity)
 - Automated deployment & production JSON optimizations — Phase 3
 
 </deferred>

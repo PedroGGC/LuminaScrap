@@ -42,17 +42,19 @@ Plans:
 - [ ] 02-01: Next.js frontend scaffold & design tokens
 - [ ] 02-02: Client-side in-memory filter UI
 
-### Phase 3: Scraper CLI Enhancements & Production Deploy
-**Goal**: Scraper CLI options (args) and static export verification.
+### Phase 3: Scraper CLI Enhancements, Marketplaces & Production Deploy
+**Goal**: Scraper CLI options (args), Tier 3 Mass & Global Marketplaces integration, and static export verification.
 **Depends on**: Phase 2
-**Requirements**: Optimizations
+**Requirements**: Optimizations, Tier 3 Marketplaces
 **Success Criteria**:
   1. Scraper CLI accepts arguments to target specific categories/retailers.
-  2. Static build of frontend compiled and verified.
-**Plans**: 1 plan
+  2. Tier 3 crawlers (Mercado Livre, Amazon, Shopee, AliExpress) are implemented with BRL currency, cookie reuse, and tax math.
+  3. Static build of frontend compiled and verified.
+**Plans**: 2 plans
 
 Plans:
 - [ ] 03-01: Scraper parameters and production verification
+- [ ] 03-02: Tier 3 Marketplaces (AliExpress, Mercado Livre, Amazon, Shopee)
 
 ## Progress
 
@@ -63,4 +65,4 @@ Phases execute in numeric order: 1 → 2 → 3
 |-------|----------------|--------|-----------|
 | 1. Scraper Core & Specs ETL | 0/1 | Not started | - |
 | 2. Next.js Frontend & In-Memory Filtering | 0/2 | Not started | - |
-| 3. Scraper CLI Enhancements & Production Deploy | 0/1 | Not started | - |
+| 3. Scraper CLI Enhancements, Marketplaces & Production Deploy | 0/2 | Not started | - |
