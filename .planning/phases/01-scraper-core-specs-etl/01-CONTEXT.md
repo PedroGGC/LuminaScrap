@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Establish local scraper executable compiling validated CPU and GPU specifications into `produtos.json` from Pichau and Terabyte. Scraper must be modular to easily support additional retailers in the future.
+Establish local scraper executable compiling validated CPU and GPU specifications into `produtos.json` from KaBuM!, Pichau, Terabyte, Bench Promos, Mercado Livre, Amazon, Shopee, and AliExpress. Scraper must be modular to easily support additional retailers in the future.
 
 </domain>
 
@@ -16,15 +16,19 @@ Establish local scraper executable compiling validated CPU and GPU specification
 ### Scraper Architecture & Runtime
 - **D-01:** Scraper runs locally on Bun runtime using TypeScript.
 - **D-02:** Use a modular design where each retailer has its own class/module conforming to a common extractor interface.
-- **D-03:** Use Playwright for dynamic elements (lazy-loaded prices/specs) and Cheerio for high-performance static parsing.
+- **D-03:** Use Playwright (with Stealth plugins: playwright-extra + puppeteer-extra-plugin-stealth) and Cheerio for robust extraction.
 
 ### Validation & ETL
 - **D-04:** Use Zod schemas to clean, validate, and normalize product data (CPUs and GPUs).
 - **D-05:** Price strings must be parsed into clean float numbers (separating cash price and installment options).
-- **D-06:** Technical specifications (such as socket names AM4/AM5/LGA1700 and GPU chipsets RTX 4060/RX 7600) must be normalized to standard lowercase/uppercase values.
+- **D-06:** Technical specifications must be normalized, excluding invalid terms ("usado", "caixa", "kit upgrade", "defeito") and identifying white-label/Chinese hardware brands.
+- **D-07:** Output must be a consolidated `produtos.json` file.
 
-### Outputs
-- **D-07:** Output must be a consolidated `produtos.json` file written to a directory accessible by the frontend.
+### Multi-Tier Crawling Architecture
+- **D-08:** Implement crawlers spanning three tiers:
+  - **Tier 1:** KaBuM! (React backend API interception), Pichau (Playwright dynamic cards), and Terabyte (Cheerio/Playwright hybrid).
+  - **Tier 2:** Bench Promos (Affiliate URL resolver).
+  - **Tier 3:** Mercado Livre (keyword-search, condition new, official/platinum stores), Amazon & Shopee (dynamic handling), and AliExpress (tax calculation - Remessa Conforme, force BRL/BR shipping).
 
 ### the agent's Discretion
 - Code folder structure inside `scraper/`.
