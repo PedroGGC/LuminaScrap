@@ -46,16 +46,106 @@ function formatImageUrl(urlStr: string, targetUrl: string): string {
   return cleaned;
 }
 
+const BANNER_BLACKLIST_TERMS = [
+  'banner', 'oferta', 'ofertas', 'campaign', 'header', 'logo', 'prime',
+  'stripe', 'promotion', '600x120', 'sprite', 'icon', 'button', 'badge',
+  'nav-', 'footer', 'hero-', 'ads-', 'advertisement'
+];
+
+function isValidProductImage(urlStr: string): boolean {
+  if (!urlStr || typeof urlStr !== 'string' || urlStr.trim().length <= 5) return false;
+  const lower = urlStr.toLowerCase();
+  return !BANNER_BLACKLIST_TERMS.some((term) => lower.includes(term));
+}
+
+function extractAmazonImage(html: string, targetUrl: string): string {
+  if (!html) return '';
+
+  // a) Elementos #landingImage ou #imgBlkFront (data-old-hires ou src)
+  const landingImageMatch =
+    html.match(/id=["']landingImage["'][^>]*data-old-hires=["']([^"']+)["']/i) ||
+    html.match(/id=["']landingImage["'][^>]*src=["']([^"']+)["']/i) ||
+    html.match(/id=["']imgBlkFront["'][^>]*data-old-hires=["']([^"']+)["']/i) ||
+    html.match(/id=["']imgBlkFront["'][^>]*src=["']([^"']+)["']/i);
+
+  if (landingImageMatch && landingImageMatch[1]) {
+    const candidate = formatImageUrl(landingImageMatch[1].trim(), targetUrl);
+    if (isValidProductImage(candidate)) {
+      console.log('[Amazon Scraper] Imagem principal extraída via seletor de elemento:', candidate);
+      return candidate;
+    } else {
+      console.log('[Amazon Scraper] Banner ignorado, buscando seletor interno...');
+    }
+  }
+
+  // b) Atributo data-a-dynamic-image="{...}"
+  const dynamicMatch = html.match(/data-a-dynamic-image=["'](\{.*?\}|&quot;\{.*?\}&quot;)["']/i);
+  if (dynamicMatch && dynamicMatch[1]) {
+    try {
+      const decodedJson = dynamicMatch[1].replace(/&quot;/g, '"');
+      const parsedObj = JSON.parse(decodedJson);
+      const urls = Object.keys(parsedObj);
+      for (const rawUrl of urls) {
+        const candidate = formatImageUrl(rawUrl, targetUrl);
+        if (isValidProductImage(candidate)) {
+          console.log('[Amazon Scraper] Imagem principal extraída via data-a-dynamic-image:', candidate);
+          return candidate;
+        }
+      }
+    } catch {
+      // Ignora erro no parse do JSON dinâmico
+    }
+  }
+
+  // c) Regex CDN Amazon m.media-amazon.com/images/I/
+  const amazonCdnMatches = html.matchAll(/https?:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9%_\-]+\.(?:jpg|jpeg|png|webp)/gi);
+  for (const match of Array.from(amazonCdnMatches)) {
+    if (match[0]) {
+      const candidate = formatImageUrl(match[0].trim(), targetUrl);
+      if (isValidProductImage(candidate)) {
+        console.log('[Amazon Scraper] Imagem principal extraída via CDN Regex:', candidate);
+        return candidate;
+      }
+    }
+  }
+
+  // d) og:image Meta Tag se passar na blacklist
+  const ogMatch =
+    html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i) ||
+    html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:image["']/i);
+
+  if (ogMatch && ogMatch[1]) {
+    const candidate = formatImageUrl(ogMatch[1].trim(), targetUrl);
+    if (isValidProductImage(candidate)) {
+      console.log('[Amazon Scraper] Imagem principal extraída via og:image validador:', candidate);
+      return candidate;
+    } else {
+      console.log('[Amazon Scraper] Banner ignorado em og:image, buscando seletor interno...');
+    }
+  }
+
+  return '';
+}
+
 function extractImageUrlFromHtml(html: string, targetUrl: string): string {
   if (!html) return '';
 
-  // 1. Meta Tag og:image (Prioridade Máxima)
+  const isAmazon = targetUrl.toLowerCase().includes('amazon.com') || targetUrl.toLowerCase().includes('amzn.');
+  if (isAmazon) {
+    const amazonImg = extractAmazonImage(html, targetUrl);
+    if (amazonImg) return amazonImg;
+  }
+
+  // 1. Meta Tag og:image
   const ogImageMatch =
     html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i) ||
     html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:image["']/i);
 
-  if (ogImageMatch && ogImageMatch[1] && ogImageMatch[1].trim().length > 5) {
-    return formatImageUrl(ogImageMatch[1].trim(), targetUrl);
+  if (ogImageMatch && ogImageMatch[1]) {
+    const candidate = formatImageUrl(ogImageMatch[1].trim(), targetUrl);
+    if (isValidProductImage(candidate)) {
+      return candidate;
+    }
   }
 
   // 2. Schema JSON-LD (<script type="application/ld+json">) - chave "image"
@@ -74,8 +164,11 @@ function extractImageUrlFromHtml(html: string, targetUrl: string): string {
             let img = item.image || (item.mainEntity && item.mainEntity.image);
             if (Array.isArray(img)) img = img[0];
             if (typeof img === 'object' && img !== null) img = img.url || img.contentUrl;
-            if (typeof img === 'string' && img.length > 5) {
-              return formatImageUrl(img, targetUrl);
+            if (typeof img === 'string') {
+              const candidate = formatImageUrl(img, targetUrl);
+              if (isValidProductImage(candidate)) {
+                return candidate;
+              }
             }
           }
         }
@@ -96,8 +189,11 @@ function extractImageUrlFromHtml(html: string, targetUrl: string): string {
 
   for (const regex of metaRegexes) {
     const metaMatch = html.match(regex);
-    if (metaMatch && metaMatch[1] && metaMatch[1].trim().length > 5) {
-      return formatImageUrl(metaMatch[1].trim(), targetUrl);
+    if (metaMatch && metaMatch[1]) {
+      const candidate = formatImageUrl(metaMatch[1].trim(), targetUrl);
+      if (isValidProductImage(candidate)) {
+        return candidate;
+      }
     }
   }
 
@@ -113,7 +209,10 @@ function extractImageUrlFromHtml(html: string, targetUrl: string): string {
   for (const cdnRegex of cdnRegexes) {
     const cdnMatch = html.match(cdnRegex);
     if (cdnMatch && cdnMatch[0]) {
-      return formatImageUrl(cdnMatch[0].trim(), targetUrl);
+      const candidate = formatImageUrl(cdnMatch[0].trim(), targetUrl);
+      if (isValidProductImage(candidate)) {
+        return candidate;
+      }
     }
   }
 
