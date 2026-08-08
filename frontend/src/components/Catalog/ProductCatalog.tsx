@@ -103,10 +103,10 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="text-zinc-500 hover:text-zinc-300 transition-colors"
-            title="Fechar Sidebar"
+            className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors"
+            title="Recolher Filtros"
           >
-            <X size={14} />
+            <ChevronLeft size={16} />
           </button>
         </div>
 
@@ -257,10 +257,12 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
             {!sidebarOpen && (
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-lg text-zinc-300 text-xs transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:border-indigo-500/50 hover:bg-zinc-800 rounded-lg text-zinc-200 text-xs transition-colors"
+                title="Expandir Filtros"
               >
+                <ChevronRight size={16} className="text-indigo-400" />
                 <SlidersHorizontal size={14} className="text-indigo-400" />
-                <span>Filtros</span>
+                <span>Expandir Filtros</span>
               </button>
             )}
 
