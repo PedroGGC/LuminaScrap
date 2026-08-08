@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-100 font-mono antialiased selection:bg-indigo-500/30;
+  }
+}
+
+/* Glassmorphism custom classes */
+.glass-panel {
+  @apply bg-zinc-900/40 backdrop-blur-md border border-zinc-800/60 rounded-lg shadow-xl shadow-black/40;
+}
+
+.glass-node {
+  @apply bg-zinc-950/80 backdrop-blur-sm border border-zinc-800 rounded px-4 py-3 shadow-md transition-all duration-200;
+}
