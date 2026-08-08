@@ -18,7 +18,107 @@ function checkIsWhiteLabel(name: string): boolean {
   return WHITE_LABEL_BRANDS.some((brand) => new RegExp(`\\b${brand}\\b`, 'i').test(lower));
 }
 
-// Regex extractors for specs fallback
+function getCategoryPlaceholder(type: string): string {
+  const t = (type || '').toLowerCase();
+  if (t === 'cpu') return 'https://placehold.co/600x400/1e1b4b/818cf8?text=CPU+Processor';
+  if (t === 'gpu') return 'https://placehold.co/600x400/064e3b/34d399?text=Graphics+Card';
+  if (t === 'motherboard') return 'https://placehold.co/600x400/701a75/f0abfc?text=Motherboard';
+  if (t === 'ram') return 'https://placehold.co/600x400/1e293b/94a3b8?text=RAM+Memory';
+  if (t === 'psu') return 'https://placehold.co/600x400/78350f/fbbf24?text=Power+Supply';
+  if (t === 'storage') return 'https://placehold.co/600x400/134e4a/2dd4bf?text=Storage+SSD';
+  return 'https://placehold.co/600x400/1a1a1a/ffffff?text=Hardware';
+}
+
+function formatImageUrl(urlStr: string, targetUrl: string): string {
+  if (!urlStr) return '';
+  let cleaned = urlStr.trim();
+  if (cleaned.startsWith('//')) {
+    return `https:${cleaned}`;
+  }
+  if (cleaned.startsWith('/')) {
+    try {
+      const parsed = new URL(targetUrl);
+      return `${parsed.origin}${cleaned}`;
+    } catch {
+      return cleaned;
+    }
+  }
+  return cleaned;
+}
+
+function extractImageUrlFromHtml(html: string, targetUrl: string): string {
+  if (!html) return '';
+
+  // 1. Meta Tag og:image (Prioridade Máxima)
+  const ogImageMatch =
+    html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i) ||
+    html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:image["']/i);
+
+  if (ogImageMatch && ogImageMatch[1] && ogImageMatch[1].trim().length > 5) {
+    return formatImageUrl(ogImageMatch[1].trim(), targetUrl);
+  }
+
+  // 2. Schema JSON-LD (<script type="application/ld+json">) - chave "image"
+  try {
+    const jsonLdMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+    for (const match of jsonLdMatches) {
+      if (!match[1]) continue;
+      try {
+        const parsed = JSON.parse(match[1].trim());
+        const items = Array.isArray(parsed) ? parsed : (parsed['@graph'] ? parsed['@graph'] : [parsed]);
+
+        for (const item of items) {
+          if (item && (item['@type'] === 'Product' || item['@type'] === 'IndividualProduct' || item['@type'] === 'ItemPage')) {
+            let img = item.image || (item.mainEntity && item.mainEntity.image);
+            if (Array.isArray(img)) img = img[0];
+            if (typeof img === 'object' && img !== null) img = img.url || img.contentUrl;
+            if (typeof img === 'string' && img.length > 5) {
+              return formatImageUrl(img, targetUrl);
+            }
+          }
+        }
+      } catch {
+        // Ignora erros pontuais no parse JSON-LD
+      }
+    }
+  } catch {
+    // Ignora falhas no match de JSON-LD
+  }
+
+  // 3. Meta Tags OpenGraph & Twitter alternativas
+  const metaRegexes = [
+    /<meta\s+(?:property|name)=["'](?:og:image:secure_url|twitter:image)["']\s+content=["']([^"']+)["']/i,
+    /<meta\s+content=["']([^"']+)["']\s+(?:property|name)=["'](?:og:image:secure_url|twitter:image)["']/i,
+    /<meta\s+property=["']og:image:url["']\s+content=["']([^"']+)["']/i,
+  ];
+
+  for (const regex of metaRegexes) {
+    const metaMatch = html.match(regex);
+    if (metaMatch && metaMatch[1] && metaMatch[1].trim().length > 5) {
+      return formatImageUrl(metaMatch[1].trim(), targetUrl);
+    }
+  }
+
+  // 4. Regex para domínios de imagens conhecidos em e-commerces
+  const cdnRegexes = [
+    /https?:\/\/(?:images|static)\.kabum\.com\.br\/[^\s"'>]+\.(?:jpg|jpeg|png|webp)/i,
+    /https?:\/\/img\.terabyteshop\.com\.br\/[^\s"'>]+\.(?:jpg|jpeg|png|webp)/i,
+    /https?:\/\/media\.pichau\.com\.br\/[^\s"'>]+\.(?:jpg|jpeg|png|webp)/i,
+    /https?:\/\/m\.media-amazon\.com\/images\/I\/[^\s"'>]+\.(?:jpg|jpeg|png|webp)/i,
+    /https?:\/\/http2\.mlstatic\.com\/[^\s"'>]+\.(?:jpg|jpeg|png|webp)/i,
+  ];
+
+  for (const cdnRegex of cdnRegexes) {
+    const cdnMatch = html.match(cdnRegex);
+    if (cdnMatch && cdnMatch[0]) {
+      return formatImageUrl(cdnMatch[0].trim(), targetUrl);
+    }
+  }
+
+  return '';
+}
+
+// Regex extractors para especificações técnicas de fallback
 function extractSocket(name: string): string {
   const lower = name.toLowerCase();
   if (lower.includes('am4')) return 'AM4';
@@ -108,13 +208,13 @@ export async function enrichProductWithScraperApi(
 ): Promise<EnrichedProductData> {
   const apiKey = process.env.SCRAPER_API_KEY;
   const isWhiteLabel = checkIsWhiteLabel(rawTitle);
+  const categoryPlaceholder = getCategoryPlaceholder(type);
 
-  // If no ScraperAPI key provided, use fallback immediately
   if (!apiKey || apiKey.trim() === '') {
-    console.log('[ScraperAPI] Key not configured. Using Telegram worker fallback specs.');
+    console.log('[ScraperAPI] Key not configured. Using Telegram worker fallback specs and category placeholder.');
     return {
       name: rawTitle,
-      image: '',
+      image: categoryPlaceholder,
       specs: buildFallbackSpecs(type, rawTitle, rawSpecsFallback),
       isWhiteLabel,
       usedScraperApi: false,
@@ -122,47 +222,73 @@ export async function enrichProductWithScraperApi(
     };
   }
 
-  try {
-    const scraperUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&render=false`;
-    
-    // Set 8-second timeout using AbortController
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+  let html = '';
 
-    console.log(`[ScraperAPI] Fetching HTML for ${targetUrl}...`);
-    const response = await fetch(scraperUrl, { signal: controller.signal });
+  try {
+    // 1. Primeira Tentativa: ScraperAPI simples (country_code=br)
+    const initialUrl = `https://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&country_code=br&render=false`;
+    
+    let controller = new AbortController();
+    let timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    console.log(`[ScraperAPI] Fetching HTML for ${targetUrl} (BR proxy)...`);
+    let response = await fetch(initialUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      console.warn(`[ScraperAPI] Returned status ${response.status}. Triggering fallback.`);
-      return {
-        name: rawTitle,
-        image: '',
-        specs: buildFallbackSpecs(type, rawTitle, rawSpecsFallback),
-        isWhiteLabel,
-        usedScraperApi: true,
-        usedFallback: true,
-      };
+    if (response.ok) {
+      html = await response.text();
     }
 
-    const html = await response.text();
+    const isCloudflare =
+      !response.ok ||
+      response.status === 403 ||
+      response.status === 429 ||
+      html.includes('Cloudflare') ||
+      html.includes('Access Denied') ||
+      html.includes('Attention Required') ||
+      html.includes('Just a moment...');
 
-    // Extract og:image or twitter:image from HTML
-    let extractedImage = '';
-    const ogImageMatch =
-      html.match(/<meta\s+(?:property|name)=["'](?:og:image|twitter:image)["']\s+content=["']([^"']+)["']/i) ||
-      html.match(/<meta\s+content=["']([^"']+)["']\s+(?:property|name)=["'](?:og:image|twitter:image)["']/i);
+    // 2. Retry com render_js=true se ocorreu 403/429/Cloudflare
+    if (isCloudflare) {
+      console.warn('[ScraperAPI] Status 403/429 ou Cloudflare detectado. Tentando novamente com render_js=true...');
+      
+      const retryUrl = `https://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&country_code=br&render_js=true`;
+      controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), 15000); // 15s para renderização JS
 
-    if (ogImageMatch && ogImageMatch[1]) {
-      extractedImage = ogImageMatch[1].trim();
+      response = await fetch(retryUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        html = await response.text();
+        const retryCloudflare = html.includes('Cloudflare') || html.includes('Access Denied');
+        if (!retryCloudflare) {
+          console.log('[ScraperAPI] Retry efetuado com sucesso (JS Render)');
+        } else {
+          console.warn('[ScraperAPI] Bloqueio persistente (403). Usando imagem fallback de categoria.');
+        }
+      } else {
+        console.warn(`[ScraperAPI] Bloqueio persistente (${response.status}). Usando imagem fallback de categoria.`);
+      }
+    } else {
+      console.log('[ScraperAPI Response Snippet]:', html.substring(0, 300));
     }
 
-    // Extract page title if available and clean it
+    // 3. Extração da Imagem Real ou Fallback Elegante de Categoria
+    const extractedImageRaw = extractImageUrlFromHtml(html, targetUrl);
+    const finalImage = extractedImageRaw || categoryPlaceholder;
+
+    if (extractedImageRaw) {
+      console.log('[ScraperAPI] URL da imagem extraída:', finalImage);
+    } else {
+      console.warn('[ScraperAPI] Nenhuma imagem no HTML. Usando imagem fallback de categoria.');
+    }
+
     let extractedName = rawTitle;
     const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
     if (titleMatch && titleMatch[1]) {
       const cleanPageTitle = titleMatch[1].split('|')[0].split('-')[0].trim();
-      if (cleanPageTitle.length >= 10) {
+      if (cleanPageTitle.length >= 10 && !cleanPageTitle.includes('Cloudflare') && !cleanPageTitle.includes('Access Denied')) {
         extractedName = cleanPageTitle;
       }
     }
@@ -171,17 +297,17 @@ export async function enrichProductWithScraperApi(
 
     return {
       name: extractedName,
-      image: extractedImage,
+      image: finalImage,
       specs: finalSpecs,
       isWhiteLabel,
       usedScraperApi: true,
-      usedFallback: false,
+      usedFallback: !extractedImageRaw,
     };
   } catch (err: any) {
-    console.warn(`[ScraperAPI] Request failed (${err?.message || err}). Using fallback specs.`);
+    console.warn(`[ScraperAPI] Request failed (${err?.message || err}). Usando imagem fallback de categoria.`);
     return {
       name: rawTitle,
-      image: '',
+      image: categoryPlaceholder,
       specs: buildFallbackSpecs(type, rawTitle, rawSpecsFallback),
       isWhiteLabel,
       usedScraperApi: true,

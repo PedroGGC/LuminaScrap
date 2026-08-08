@@ -1,3 +1,4 @@
+import { Redis } from '@upstash/redis';
 import fs from 'fs';
 import path from 'path';
 
@@ -28,9 +29,20 @@ export interface DBProduct {
   createdAt: string;
 }
 
-// Single Source of Truth file path: frontend/public/produtos.json
+const PRODUCTS_KEY = 'products';
+
+function getRedisClient(): Redis | null {
+  try {
+    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      return Redis.fromEnv();
+    }
+  } catch (err) {
+    console.warn('[ProductDB] Upstash Redis credentials not configured. Using local JSON fallback.');
+  }
+  return null;
+}
+
 function getDbFilePath(): string {
-  // If running from frontend directory or parent workspace directory
   const relativePublic = path.join(process.cwd(), 'public', 'produtos.json');
   if (fs.existsSync(path.dirname(relativePublic))) {
     return relativePublic;
@@ -39,7 +51,100 @@ function getDbFilePath(): string {
   return frontendPublic;
 }
 
-// Rigid Category Normalization (category -> type)
+function loadProductsFromLocalFile(): DBProduct[] {
+  const filePath = getDbFilePath();
+  if (fs.existsSync(filePath)) {
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item: any, index: number) => {
+          const normalizedLink = cleanUrl(item.link || '');
+          const storeName = getStoreFromUrl(normalizedLink || item.link);
+          const type = item.type || mapCategoryToType(item.category || '');
+          const slug = item.slug || item.id || generateProductSlug(item.name || '', type, item.specs);
+          const nowIso = new Date().toISOString();
+
+          const offers: Offer[] = Array.isArray(item.offers) && item.offers.length > 0
+            ? item.offers.map((o: any) => ({
+                ...o,
+                source: getStoreFromUrl(o.link || normalizedLink),
+                link: cleanUrl(o.link || normalizedLink)
+              }))
+            : [
+                {
+                  id: `off-${index}-${Date.now()}`,
+                  source: storeName,
+                  priceCash: item.priceCash || 0,
+                  priceInstallment: item.priceInstallment || item.priceCash || 0,
+                  link: normalizedLink,
+                  coupon: item.coupon || '',
+                  lastSeenAt: item.updatedAt || nowIso
+                }
+              ];
+
+          return {
+            id: item.id || slug,
+            slug: slug,
+            name: item.name || 'Produto sem nome',
+            type: type,
+            image: item.image || '',
+            isWhiteLabel: !!item.isWhiteLabel,
+            specs: item.specs || {},
+            offers: offers,
+            priceCash: item.priceCash || 0,
+            priceInstallment: item.priceInstallment || item.priceCash || 0,
+            link: normalizedLink,
+            source: storeName,
+            updatedAt: item.updatedAt || nowIso,
+            createdAt: item.createdAt || nowIso
+          };
+        });
+      }
+    } catch (err) {
+      console.error(`[ProductDB] Error reading ${filePath}:`, err);
+    }
+  }
+  return [];
+}
+
+function saveProductsToLocalFile(products: DBProduct[]): void {
+  try {
+    const filePath = getDbFilePath();
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filePath, JSON.stringify(products, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[ProductDB] Error saving to local JSON:', err);
+  }
+}
+
+export function getStoreFromUrl(urlStr: string): string {
+  if (!urlStr) return 'Outros';
+  try {
+    const hostname = new URL(urlStr).hostname.toLowerCase();
+    if (hostname.includes('kabum.com.br') || hostname.includes('kabum')) return 'KaBuM!';
+    if (hostname.includes('terabyteshop.com.br') || hostname.includes('terabyte')) return 'Terabyte';
+    if (hostname.includes('pichau.com.br') || hostname.includes('pichau')) return 'Pichau';
+    if (hostname.includes('amazon.com') || hostname.includes('amzn.')) return 'Amazon';
+    if (hostname.includes('mercadolivre.com.br') || hostname.includes('mercadolibre') || hostname.includes('mercadolivre')) return 'Mercado Livre';
+    if (hostname.includes('magazineluiza.com.br') || hostname.includes('magalu')) return 'Magazine Luiza';
+    if (hostname.includes('aliexpress.com')) return 'AliExpress';
+    if (hostname.includes('shopee.com.br')) return 'Shopee';
+
+    const cleanHost = hostname.replace(/^www\./, '');
+    const mainDomain = cleanHost.split('.')[0];
+    if (mainDomain && mainDomain.length > 1) {
+      return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
+    }
+    return 'Loja Online';
+  } catch {
+    return 'Loja Online';
+  }
+}
+
 export function mapCategoryToType(category: string): string {
   const cat = (category || '').toLowerCase().trim();
   
@@ -106,65 +211,42 @@ export function generateProductSlug(title: string, type: string, specs?: Record<
   return clean.slice(0, 60).replace(/-+$/, '');
 }
 
-export function loadProducts(): DBProduct[] {
-  const filePath = getDbFilePath();
-  if (fs.existsSync(filePath)) {
+export async function loadProducts(): Promise<DBProduct[]> {
+  const redis = getRedisClient();
+  if (redis) {
     try {
-      const raw = fs.readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.map((item: any, index: number) => {
-          const normalizedLink = cleanUrl(item.link || '');
-          const type = item.type || mapCategoryToType(item.category || '');
-          const slug = item.slug || item.id || generateProductSlug(item.name || '', type, item.specs);
-          const nowIso = new Date().toISOString();
-
-          const offers: Offer[] = Array.isArray(item.offers) && item.offers.length > 0
-            ? item.offers
-            : [
-                {
-                  id: `off-${index}-${Date.now()}`,
-                  source: item.source || 'Scraper',
-                  priceCash: item.priceCash || 0,
-                  priceInstallment: item.priceInstallment || item.priceCash || 0,
-                  link: normalizedLink,
-                  coupon: item.coupon || '',
-                  lastSeenAt: item.updatedAt || nowIso
-                }
-              ];
-
-          return {
-            id: item.id || slug,
-            slug: slug,
-            name: item.name || 'Produto sem nome',
-            type: type,
-            image: item.image || '',
-            isWhiteLabel: !!item.isWhiteLabel,
-            specs: item.specs || {},
-            offers: offers,
-            priceCash: item.priceCash || 0,
-            priceInstallment: item.priceInstallment || item.priceCash || 0,
-            link: normalizedLink,
-            source: item.source || 'Scraper',
-            updatedAt: item.updatedAt || nowIso,
-            createdAt: item.createdAt || nowIso
-          };
-        });
+      const data = await redis.get<DBProduct[]>(PRODUCTS_KEY);
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
       }
     } catch (err) {
-      console.error(`[ProductDB] Error reading ${filePath}:`, err);
+      console.error('[ProductDB Redis] Erro ao carregar produtos do Upstash Redis:', err);
     }
   }
-  return [];
+
+  const localProducts = loadProductsFromLocalFile();
+  if (localProducts.length > 0 && redis) {
+    try {
+      await redis.set(PRODUCTS_KEY, localProducts);
+      console.log(`[ProductDB Redis] Migrados ${localProducts.length} produtos do produtos.json para o Upstash Redis.`);
+    } catch (err) {
+      console.error('[ProductDB Redis] Erro na migração para Redis:', err);
+    }
+  }
+  return localProducts;
 }
 
-export function saveProducts(products: DBProduct[]): void {
-  const filePath = getDbFilePath();
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+export async function saveProducts(products: DBProduct[]): Promise<void> {
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      await redis.set(PRODUCTS_KEY, products);
+    } catch (err) {
+      console.error('[ProductDB Redis] Erro ao salvar produtos no Upstash Redis:', err);
+    }
   }
-  fs.writeFileSync(filePath, JSON.stringify(products, null, 2), 'utf-8');
+
+  saveProductsToLocalFile(products);
 }
 
 export function findProduct(

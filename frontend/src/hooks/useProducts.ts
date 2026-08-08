@@ -10,16 +10,31 @@ export function useProducts() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/produtos.json').then((res) => {
-        if (!res.ok) throw new Error('Falha ao carregar produtos.json');
-        return res.json();
-      }),
-      fetch('/benchmarks.json').then((res) => {
-        if (!res.ok) throw new Error('Falha ao carregar benchmarks.json');
-        return res.json();
-      }),
-    ])
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch('/api/products');
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch {
+        // Fallback para arquivo estático
+      }
+      const fallbackRes = await fetch('/produtos.json');
+      if (!fallbackRes.ok) throw new Error('Falha ao carregar produtos');
+      return await fallbackRes.json();
+    };
+
+    const fetchBenchmarks = async () => {
+      try {
+        const res = await fetch('/benchmarks.json');
+        if (res.ok) return await res.json();
+      } catch {
+        // Ignora erro se benchmarks.json falhar
+      }
+      return {};
+    };
+
+    Promise.all([fetchProducts(), fetchBenchmarks()])
       .then(([rawProducts, benchmarksData]) => {
         let structuredProducts: ProductsData;
         let flatList: Product[] = [];
@@ -32,15 +47,24 @@ export function useProducts() {
             ram: rawProducts.filter((p: Product) => p.type === 'ram') as any,
             motherboard: rawProducts.filter((p: Product) => p.type === 'motherboard') as any,
             psu: rawProducts.filter((p: Product) => p.type === 'psu') as any,
+            storage: rawProducts.filter((p: Product) => p.type === 'storage') as any,
           };
         } else {
-          structuredProducts = rawProducts;
+          structuredProducts = {
+            cpu: rawProducts.cpu || [],
+            gpu: rawProducts.gpu || [],
+            motherboard: rawProducts.motherboard || [],
+            ram: rawProducts.ram || [],
+            psu: rawProducts.psu || [],
+            storage: rawProducts.storage || [],
+          };
           flatList = [
             ...(rawProducts.cpu || []),
             ...(rawProducts.gpu || []),
             ...(rawProducts.motherboard || []),
             ...(rawProducts.ram || []),
             ...(rawProducts.psu || []),
+            ...(rawProducts.storage || []),
           ];
         }
 
@@ -58,4 +82,3 @@ export function useProducts() {
 
   return { products, allProducts, benchmarks, loading, error };
 }
-

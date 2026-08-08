@@ -332,6 +332,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                       <img
                         src={p.image}
                         alt={p.name}
+                        referrerPolicy="no-referrer"
                         className="object-contain max-h-full max-w-full group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
                           (e.target as HTMLElement).style.display = 'none';

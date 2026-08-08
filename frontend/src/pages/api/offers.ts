@@ -5,6 +5,7 @@ import {
   findProduct,
   mapCategoryToType,
   generateProductSlug,
+  getStoreFromUrl,
   cleanUrl,
   DBProduct,
   Offer,
@@ -13,7 +14,7 @@ import { enrichProductWithScraperApi } from '@/lib/scraperService';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
-    const products = loadProducts();
+    const products = await loadProducts();
     const totalOffers = products.reduce((acc, p) => acc + (p.offers?.length || 1), 0);
     return res.status(200).json({
       total_products: products.length,
@@ -36,10 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const itemTitle = (title || raw_text || 'Produto Hardware').trim();
     const type = mapCategoryToType(category || '');
     const normalizedLink = cleanUrl(link);
-    const storeSource = source || 'Telegram';
+    const storeSource = getStoreFromUrl(normalizedLink || link);
     const numPrice = typeof price === 'number' ? price : parseFloat(price);
 
-    const products = loadProducts();
+    const products = await loadProducts();
     const slug = generateProductSlug(itemTitle, type, raw_specs_regex);
 
     // 1. CHECAGEM DE CACHE NO BANCO DE DADOS
@@ -87,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       product.source = bestOffer.source;
       product.updatedAt = nowIso;
 
-      saveProducts(products);
+      await saveProducts(products);
 
       return res.status(200).json({
         status: 'updated',
@@ -96,10 +97,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         product_id: product.id,
         slug: product.slug,
         current_price: product.priceCash,
+        store: storeSource,
       });
     }
 
-    // 2. PRODUTO INÉDITO (NÃO EXISTE NO BANCO) -> Executa Lazy Loading via ScraperAPI (com Fallback)
+    // 2. PRODUTO INÉDITO -> Lazy Loading via ScraperAPI (com Fallback)
     console.log(`[Lazy Loading] Produto inédito detectado: "${itemTitle}". Consultando ScraperAPI...`);
     const enriched = await enrichProductWithScraperApi(
       normalizedLink,
@@ -137,7 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     products.push(newProduct);
-    saveProducts(products);
+    await saveProducts(products);
 
     return res.status(201).json({
       status: 'created',
@@ -145,6 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       requests_used: enriched.usedScraperApi ? 1 : 0,
       product_id: newProduct.id,
       slug: newProduct.slug,
+      store: storeSource,
       image_extracted: !!enriched.image,
       fallback_used: enriched.usedFallback,
     });
