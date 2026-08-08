@@ -60,7 +60,9 @@ function extractImageUrlFromHtml(html: string, targetUrl: string): string {
 
   // 2. Schema JSON-LD (<script type="application/ld+json">) - chave "image"
   try {
-    const jsonLdMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+    const jsonLdMatches = Array.from(
+      html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
+    );
     for (const match of jsonLdMatches) {
       if (!match[1]) continue;
       try {
