@@ -46,19 +46,96 @@ function formatImageUrl(urlStr: string, targetUrl: string): string {
   return cleaned;
 }
 
-export function normalizeAmazonUrl(urlStr: string): string {
+export async function resolveFinalUrl(initialUrl: string): Promise<string> {
+  if (!initialUrl) return initialUrl;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    let res = await fetch(initialUrl, {
+      method: 'HEAD',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    });
+    clearTimeout(timeoutId);
+
+    if (res.url && res.url !== initialUrl && res.ok) {
+      console.log(`[URL Resolver] Link desencurtado via HEAD de "${initialUrl}" -> "${res.url}"`);
+      return res.url;
+    }
+
+    // Se HEAD falhar ou retornar a mesma URL, tentar GET leve
+    const controllerGet = new AbortController();
+    const timeoutIdGet = setTimeout(() => controllerGet.abort(), 5000);
+    res = await fetch(initialUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controllerGet.signal,
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    });
+    clearTimeout(timeoutIdGet);
+
+    if (res.url && res.url !== initialUrl) {
+      console.log(`[URL Resolver] Link desencurtado via GET de "${initialUrl}" -> "${res.url}"`);
+      return res.url;
+    }
+
+    return res.url || initialUrl;
+  } catch (err) {
+    console.warn(`[URL Resolver] Não foi possível desencurtar "${initialUrl}":`, err);
+    return initialUrl;
+  }
+}
+
+export async function normalizeProductUrl(urlStr: string): Promise<string> {
   if (!urlStr) return urlStr;
   const lower = urlStr.toLowerCase();
-  if (lower.includes('amazon') || lower.includes('amzn') || lower.includes('link.amazon')) {
-    const asinMatch = urlStr.match(/\b([B0-9][A-Z0-9]{9})\b/i);
+
+  const isAmazon = lower.includes('amazon') || lower.includes('amzn') || lower.includes('link.amazon');
+  const isShopee = lower.includes('shopee') || lower.includes('s.shopee.com.br');
+
+  if (!isAmazon && !isShopee) {
+    return urlStr;
+  }
+
+  // Desencurta o link primeiro
+  const resolvedUrl = await resolveFinalUrl(urlStr);
+  const resolvedLower = resolvedUrl.toLowerCase();
+
+  if (isAmazon || resolvedLower.includes('amazon') || resolvedLower.includes('amzn')) {
+    // Regex para extrair ASIN real da URL final resolvida
+    const asinMatch =
+      resolvedUrl.match(/\/dp\/([A-Z0-9]{10})/i) ||
+      resolvedUrl.match(/\/gp\/product\/([A-Z0-9]{10})/i) ||
+      resolvedUrl.match(/\/ASIN\/([A-Z0-9]{10})/i) ||
+      resolvedUrl.match(/\/d\/([A-Z0-9]{10})/i);
+
     if (asinMatch && asinMatch[1]) {
-      const asin = asinMatch[1].toUpperCase();
-      const canonical = `https://www.amazon.com.br/dp/${asin}`;
-      console.log(`[ScraperAPI] Amazon ASIN detectado (${asin}). Normalizando URL para: ${canonical}`);
+      const realAsin = asinMatch[1].toUpperCase();
+      const canonical = `https://www.amazon.com.br/dp/${realAsin}`;
+      console.log(`[Amazon Scraper] ASIN real extraído (${realAsin}). URL canônica: ${canonical}`);
       return canonical;
     }
+    return resolvedUrl;
   }
-  return urlStr;
+
+  if (isShopee || resolvedLower.includes('shopee')) {
+    console.log(`[Shopee Scraper] URL resolvida: ${resolvedUrl}`);
+    return resolvedUrl;
+  }
+
+  return resolvedUrl;
+}
+
+export async function normalizeAmazonUrl(urlStr: string): Promise<string> {
+  return normalizeProductUrl(urlStr);
 }
 
 const BANNER_BLACKLIST_TERMS = [
@@ -322,7 +399,7 @@ export async function enrichProductWithScraperApi(
   rawTitle: string,
   rawSpecsFallback: Record<string, any>
 ): Promise<EnrichedProductData> {
-  const targetUrl = normalizeAmazonUrl(rawTargetUrl);
+  const targetUrl = await normalizeProductUrl(rawTargetUrl);
   const apiKey = process.env.SCRAPER_API_KEY;
   const isWhiteLabel = checkIsWhiteLabel(rawTitle);
   const categoryPlaceholder = getCategoryPlaceholder(type);
