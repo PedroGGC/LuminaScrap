@@ -46,6 +46,21 @@ function formatImageUrl(urlStr: string, targetUrl: string): string {
   return cleaned;
 }
 
+export function normalizeAmazonUrl(urlStr: string): string {
+  if (!urlStr) return urlStr;
+  const lower = urlStr.toLowerCase();
+  if (lower.includes('amazon') || lower.includes('amzn') || lower.includes('link.amazon')) {
+    const asinMatch = urlStr.match(/\b([B0-9][A-Z0-9]{9})\b/i);
+    if (asinMatch && asinMatch[1]) {
+      const asin = asinMatch[1].toUpperCase();
+      const canonical = `https://www.amazon.com.br/dp/${asin}`;
+      console.log(`[ScraperAPI] Amazon ASIN detectado (${asin}). Normalizando URL para: ${canonical}`);
+      return canonical;
+    }
+  }
+  return urlStr;
+}
+
 const BANNER_BLACKLIST_TERMS = [
   'banner', 'oferta', 'ofertas', 'campaign', 'header', 'logo', 'prime',
   'stripe', 'promotion', '600x120', 'sprite', 'icon', 'button', 'badge',
@@ -130,7 +145,7 @@ function extractAmazonImage(html: string, targetUrl: string): string {
 function extractImageUrlFromHtml(html: string, targetUrl: string): string {
   if (!html) return '';
 
-  const isAmazon = targetUrl.toLowerCase().includes('amazon.com') || targetUrl.toLowerCase().includes('amzn.');
+  const isAmazon = targetUrl.toLowerCase().includes('amazon') || targetUrl.toLowerCase().includes('amzn') || targetUrl.toLowerCase().includes('link.amazon');
   if (isAmazon) {
     const amazonImg = extractAmazonImage(html, targetUrl);
     if (amazonImg) return amazonImg;
@@ -302,11 +317,12 @@ function buildFallbackSpecs(type: string, name: string, rawSpecs: Record<string,
 }
 
 export async function enrichProductWithScraperApi(
-  targetUrl: string,
+  rawTargetUrl: string,
   type: string,
   rawTitle: string,
   rawSpecsFallback: Record<string, any>
 ): Promise<EnrichedProductData> {
+  const targetUrl = normalizeAmazonUrl(rawTargetUrl);
   const apiKey = process.env.SCRAPER_API_KEY;
   const isWhiteLabel = checkIsWhiteLabel(rawTitle);
   const categoryPlaceholder = getCategoryPlaceholder(type);

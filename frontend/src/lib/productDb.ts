@@ -128,7 +128,7 @@ export function getStoreFromUrl(urlStr: string): string {
     if (hostname.includes('kabum.com.br') || hostname.includes('kabum')) return 'KaBuM!';
     if (hostname.includes('terabyteshop.com.br') || hostname.includes('terabyte')) return 'Terabyte';
     if (hostname.includes('pichau.com.br') || hostname.includes('pichau')) return 'Pichau';
-    if (hostname.includes('amazon.com') || hostname.includes('amzn.')) return 'Amazon';
+    if (hostname.includes('amazon') || hostname.includes('amzn') || urlStr.toLowerCase().includes('link.amazon')) return 'Amazon';
     if (hostname.includes('mercadolivre.com.br') || hostname.includes('mercadolibre') || hostname.includes('mercadolivre')) return 'Mercado Livre';
     if (hostname.includes('magazineluiza.com.br') || hostname.includes('magalu')) return 'Magazine Luiza';
     if (hostname.includes('aliexpress.com')) return 'AliExpress';
