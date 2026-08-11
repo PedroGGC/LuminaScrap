@@ -57,8 +57,10 @@ export function extractTargetFromShortener(urlStr: string): string | null {
       decodedUrl = decodeURIComponent(urlStr);
     } catch {}
 
+    let foundTarget: string | null = null;
     const parsed = new URL(urlStr);
-    for (const [, rawVal] of parsed.searchParams.entries()) {
+    parsed.searchParams.forEach((rawVal) => {
+      if (foundTarget) return;
       let val = rawVal;
       try {
         val = decodeURIComponent(rawVal);
@@ -79,10 +81,12 @@ export function extractTargetFromShortener(urlStr: string): string | null {
           candidateLower.includes('aliexpress.com') ||
           candidateLower.includes('shopee.com')
         ) {
-          return candidate;
+          foundTarget = candidate;
         }
       }
-    }
+    });
+
+    if (foundTarget) return foundTarget;
 
     // Se a própria URL decodificada contém o link da loja embutido
     const inlineMatch = decodedUrl.match(/https?:\/\/(?:www\.)?(?:kabum\.com\.br|terabyteshop\.com\.br|pichau\.com\.br|amazon\.com|mercadolivre\.com|magazineluiza\.com|shopee\.com|aliexpress\.com)[^\s"'<>]*/i);
