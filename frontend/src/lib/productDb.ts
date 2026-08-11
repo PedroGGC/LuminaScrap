@@ -61,7 +61,17 @@ function loadProductsFromLocalFile(): DBProduct[] {
         return parsed.map((item: any, index: number) => {
           const normalizedLink = cleanUrl(item.link || '');
           const storeName = getStoreFromUrl(normalizedLink || item.link);
-          const type = item.type || mapCategoryToType(item.category || '');
+          let type = mapCategoryToType(item.category || item.type || '', item.name || '');
+          if (
+            item.name &&
+            (item.name.toLowerCase().includes('gvgmall') ||
+              item.name.toLowerCase().includes('chave windows') ||
+              item.name.toLowerCase().includes('windows 11') ||
+              item.name.toLowerCase().includes('windows 10') ||
+              item.name.toLowerCase().includes('chave de ativação'))
+          ) {
+            type = 'software';
+          }
           const slug = item.slug || item.id || generateProductSlug(item.name || '', type, item.specs);
           const nowIso = new Date().toISOString();
 
@@ -121,43 +131,111 @@ function saveProductsToLocalFile(products: DBProduct[]): void {
   }
 }
 
-export function getStoreFromUrl(urlStr: string): string {
-  if (!urlStr) return 'Outros';
+export function getStoreFromUrl(urlStr: string, existingSource?: string): string {
+  if (!urlStr) return existingSource || 'Loja Online';
   try {
-    const hostname = new URL(urlStr).hostname.toLowerCase();
-    if (hostname.includes('kabum.com.br') || hostname.includes('kabum')) return 'KaBuM!';
-    if (hostname.includes('terabyteshop.com.br') || hostname.includes('terabyte')) return 'Terabyte';
-    if (hostname.includes('pichau.com.br') || hostname.includes('pichau')) return 'Pichau';
-    if (hostname.includes('amazon') || hostname.includes('amzn') || urlStr.toLowerCase().includes('link.amazon')) return 'Amazon';
-    if (hostname.includes('mercadolivre.com.br') || hostname.includes('mercadolibre') || hostname.includes('mercadolivre')) return 'Mercado Livre';
-    if (hostname.includes('magazineluiza.com.br') || hostname.includes('magalu')) return 'Magazine Luiza';
-    if (hostname.includes('aliexpress.com')) return 'AliExpress';
-    if (hostname.includes('shopee.com.br')) return 'Shopee';
+    let lowerUrl = urlStr.toLowerCase();
+    try {
+      lowerUrl = decodeURIComponent(lowerUrl);
+    } catch {}
 
+    if (lowerUrl.includes('kabum.com.br') || lowerUrl.includes('kabum')) return 'KaBuM!';
+    if (lowerUrl.includes('terabyteshop.com.br') || lowerUrl.includes('terabyte')) return 'Terabyte';
+    if (lowerUrl.includes('pichau.com.br') || lowerUrl.includes('pichau')) return 'Pichau';
+    if (lowerUrl.includes('amazon') || lowerUrl.includes('amzn') || lowerUrl.includes('link.amazon')) return 'Amazon';
+    if (lowerUrl.includes('mercadolivre.com.br') || lowerUrl.includes('mercadolibre') || lowerUrl.includes('mercadolivre') || lowerUrl.includes('meli.la')) return 'Mercado Livre';
+    if (lowerUrl.includes('magazineluiza.com.br') || lowerUrl.includes('magalu') || lowerUrl.includes('magazine')) return 'Magazine Luiza';
+    if (lowerUrl.includes('aliexpress.com') || lowerUrl.includes('aliexpress')) return 'AliExpress';
+    if (lowerUrl.includes('shopee.com.br') || lowerUrl.includes('shopee')) return 'Shopee';
+
+    const hostname = new URL(urlStr).hostname.toLowerCase();
     const cleanHost = hostname.replace(/^www\./, '');
     const mainDomain = cleanHost.split('.')[0];
+
+    const shorteners = ['tidd', 'tido', 'tiddly', 'aoferta', 'bit', 'tinyurl', 'cutt', 't', 'awin1', 'lomadee', 'ad', 'atdmt', 's'];
+    if (shorteners.includes(mainDomain)) {
+      if (existingSource && !shorteners.includes(existingSource.toLowerCase()) && existingSource !== 'Outros') {
+        return existingSource;
+      }
+      return 'Loja Online';
+    }
+
     if (mainDomain && mainDomain.length > 1) {
       return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
     }
-    return 'Loja Online';
+    return existingSource || 'Loja Online';
   } catch {
-    return 'Loja Online';
+    return existingSource || 'Loja Online';
   }
 }
 
-export function mapCategoryToType(category: string): string {
+export function mapCategoryToType(category: string, title?: string): string {
   const cat = (category || '').toLowerCase().trim();
-  
-  if (cat.includes('processador') || cat === 'cpu') return 'cpu';
-  if (cat.includes('placa de vídeo') || cat.includes('placa de video') || cat === 'gpu') return 'gpu';
+  const t = (title || '').toLowerCase().trim();
+
+  // Check if title or category represents a smartphone/mobile/tablet device
+  const isMobileOrTablet =
+    t.includes('celular') ||
+    t.includes('smartphone') ||
+    t.includes('iphone') ||
+    t.includes('galaxy') ||
+    t.includes('realme') ||
+    t.includes('xiaomi') ||
+    t.includes('redmi') ||
+    t.includes('poco') ||
+    t.includes('motorola') ||
+    t.includes('tablet') ||
+    t.includes('ipad') ||
+    t.includes('6000mah') ||
+    t.includes('5000mah') ||
+    t.includes('4500mah');
+
+  if (isMobileOrTablet) {
+    return 'other';
+  }
+
+  // Check if title or category is software / key advertisement
+  if (
+    t.includes('gvgmall') ||
+    t.includes('chave windows') ||
+    t.includes('windows 11') ||
+    t.includes('windows 10') ||
+    t.includes('chave de ativação') ||
+    t.includes('licença windows') ||
+    t.includes('office 365') ||
+    t.includes('microsoft office') ||
+    cat.includes('software') ||
+    cat.includes('chave')
+  ) {
+    return 'software';
+  }
+
+  // Check if title represents a prebuilt PC or laptop/desktop system
+  const isPrebuilt =
+    t.includes('pc gamer') ||
+    t.includes('pc home') ||
+    t.includes('pc montado') ||
+    t.includes('computador') ||
+    t.includes('desktop') ||
+    t.includes('notebook') ||
+    t.includes('laptop') ||
+    t.includes('kit upgrade') ||
+    (t.includes('gb de ram') && (t.includes('intel') || t.includes('ryzen') || t.includes('core i') || t.includes('ssd')));
+
+  if (isPrebuilt) {
+    return 'other';
+  }
+
+  if (cat.includes('processador') || cat === 'cpu' || t.includes('processador')) return 'cpu';
+  if (cat.includes('placa de vídeo') || cat.includes('placa de video') || cat === 'gpu' || t.includes('rtx ') || t.includes('rx ') || t.includes('gtx ')) return 'gpu';
   if (cat.includes('memória') || cat.includes('memoria') || cat === 'ram') return 'ram';
   if (cat.includes('placa-mãe') || cat.includes('placa mãe') || cat.includes('placa mae') || cat === 'motherboard') return 'motherboard';
   if (cat.includes('fonte') || cat === 'psu' || cat.includes('power supply') || cat === 'power-supply') return 'psu';
-  if (cat.includes('monitor')) return 'monitor';
+  if (cat.includes('monitor') || t.includes('monitor')) return 'monitor';
   if (cat.includes('ssd') || cat.includes('hd') || cat.includes('armazenamento') || cat.includes('storage') || cat.includes('nvme')) return 'storage';
   if (cat.includes('gabinete') || cat === 'case') return 'case';
-  if (cat.includes('teclado') || cat === 'keyboard') return 'keyboard';
-  if (cat.includes('mouse')) return 'mouse';
+  if (cat.includes('teclado') || cat === 'keyboard' || t.includes('teclado')) return 'keyboard';
+  if (cat.includes('mouse') || t.includes('mouse')) return 'mouse';
 
   return 'other';
 }
@@ -211,20 +289,40 @@ export function generateProductSlug(title: string, type: string, specs?: Record<
   return clean.slice(0, 60).replace(/-+$/, '');
 }
 
+export function sanitizeProductStores(products: DBProduct[]): DBProduct[] {
+  return products.map((p) => {
+    const cleanSource = getStoreFromUrl(p.link, p.source);
+    const correctType = mapCategoryToType(p.type, p.name);
+    const cleanOffers = Array.isArray(p.offers)
+      ? p.offers.map((o) => ({
+          ...o,
+          source: getStoreFromUrl(o.link || p.link, o.source),
+        }))
+      : [];
+
+    return {
+      ...p,
+      type: correctType,
+      source: cleanSource,
+      offers: cleanOffers,
+    };
+  });
+}
+
 export async function loadProducts(): Promise<DBProduct[]> {
   const redis = getRedisClient();
   if (redis) {
     try {
       const data = await redis.get<DBProduct[]>(PRODUCTS_KEY);
       if (Array.isArray(data) && data.length > 0) {
-        return data;
+        return sanitizeProductStores(data);
       }
     } catch (err) {
       console.error('[ProductDB Redis] Erro ao carregar produtos do Upstash Redis:', err);
     }
   }
 
-  const localProducts = loadProductsFromLocalFile();
+  const localProducts = sanitizeProductStores(loadProductsFromLocalFile());
   if (localProducts.length > 0 && redis) {
     try {
       await redis.set(PRODUCTS_KEY, localProducts);

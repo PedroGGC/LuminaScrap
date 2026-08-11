@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gamepad2, Monitor, Gauge, Flame, Sparkles } from 'lucide-react';
+import { Gamepad2, Monitor, Gauge, Flame, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { CpuProduct, GpuProduct } from '@/types/hardware';
 import { hasIntegratedGpu } from '@/hooks/useBuildFilter';
 
@@ -25,7 +25,7 @@ const GAMES: GameBenchmark[] = [
     id: 'cs2',
     name: 'Counter-Strike 2 / Valorant',
     category: 'eSports',
-    imageBg: 'from-amber-500/20 to-orange-600/10',
+    imageBg: 'from-amber-500/10 via-orange-600/5 to-transparent',
     cpuWeight: 0.012,
     gpuWeight: 0.006,
     igpuBaseFps: 95,
@@ -34,7 +34,7 @@ const GAMES: GameBenchmark[] = [
     id: 'fortnite',
     name: 'Fortnite (UE5)',
     category: 'eSports',
-    imageBg: 'from-blue-500/20 to-indigo-600/10',
+    imageBg: 'from-cyan-500/10 via-indigo-600/5 to-transparent',
     cpuWeight: 0.005,
     gpuWeight: 0.0085,
     igpuBaseFps: 60,
@@ -43,7 +43,7 @@ const GAMES: GameBenchmark[] = [
     id: 'cyberpunk',
     name: 'Cyberpunk 2077',
     category: 'AAA',
-    imageBg: 'from-yellow-500/20 to-red-600/10',
+    imageBg: 'from-rose-500/10 via-red-600/5 to-transparent',
     cpuWeight: 0.0015,
     gpuWeight: 0.0055,
     igpuBaseFps: 28,
@@ -52,7 +52,7 @@ const GAMES: GameBenchmark[] = [
     id: 'gtav',
     name: 'GTA V / GTA RP',
     category: 'Open World',
-    imageBg: 'from-emerald-500/20 to-teal-600/10',
+    imageBg: 'from-emerald-500/10 via-teal-600/5 to-transparent',
     cpuWeight: 0.006,
     gpuWeight: 0.0055,
     igpuBaseFps: 55,
@@ -61,7 +61,7 @@ const GAMES: GameBenchmark[] = [
     id: 'rdr2',
     name: 'Red Dead Redemption 2',
     category: 'AAA',
-    imageBg: 'from-red-600/20 to-stone-800/10',
+    imageBg: 'from-[#b91c1c]/10 via-[#7c2d12]/5 to-transparent',
     cpuWeight: 0.002,
     gpuWeight: 0.0058,
     igpuBaseFps: 32,
@@ -70,7 +70,7 @@ const GAMES: GameBenchmark[] = [
     id: 'warzone',
     name: 'CoD: Warzone',
     category: 'eSports',
-    imageBg: 'from-zinc-500/20 to-emerald-900/10',
+    imageBg: 'from-[#475569]/10 via-[#0f172a]/5 to-transparent',
     cpuWeight: 0.0035,
     gpuWeight: 0.007,
     igpuBaseFps: 40,
@@ -115,70 +115,70 @@ export const FpsPredictor: React.FC<FpsPredictorProps> = ({
   };
 
   const getFpsBadge = (fps: number) => {
-    if (fps >= 144) return { label: 'Competitivo (144+ FPS)', color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' };
-    if (fps >= 60) return { label: 'Fluído (60+ FPS)', color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10' };
+    if (fps >= 144) return { label: 'Ultra Fluído (144+ FPS)', color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' };
+    if (fps >= 60) return { label: 'Fluído (60+ FPS)', color: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10' };
     if (fps >= 30) return { label: 'Jogável (30-60 FPS)', color: 'text-amber-400 border-amber-500/30 bg-amber-500/10' };
-    return { label: 'Baixo Desempenho (<30 FPS)', color: 'text-red-400 border-red-500/30 bg-red-500/10' };
+    return { label: 'Baixo FPS (<30 FPS)', color: 'text-rose-400 border-rose-500/30 bg-rose-500/10' };
   };
 
   return (
-    <div className="border border-zinc-800 bg-zinc-950/60 rounded-xl p-5 space-y-5">
+    <div className="glass-panel p-5 sm:p-6 space-y-5">
       {/* Predictor Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#1b2030] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <Gamepad2 className="text-indigo-400" size={18} />
-            <h3 className="text-sm font-bold text-zinc-100 uppercase tracking-tight">
-              Previsão de FPS & Benchmark em Jogos
+            <Gamepad2 className="text-cyan-400" size={20} />
+            <h3 className="text-sm font-extrabold text-slate-100 uppercase tracking-wide font-sans">
+              Previsão de Desempenho em Jogos (FPS Engine)
             </h3>
             {isUsingIgpu && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center gap-1 font-semibold">
-                <Sparkles size={10} /> iGPU Mode
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center gap-1 font-bold">
+                <Sparkles size={10} /> iGPU Active
               </span>
             )}
           </div>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Estimativa de desempenho em jogos populares com base no hardware selecionado.
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            Estimativa de taxa de quadros por segundo calculada a partir da pontuação sintética da CPU e GPU.
           </p>
         </div>
 
         {/* Resolution & Quality Toggles */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 text-xs">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex bg-[#07090e] border border-[#1b2030] rounded-xl p-1 text-xs">
             <button
               onClick={() => setResolution('1080p')}
-              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                resolution === '1080p' ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+              className={`px-3 py-1 rounded-lg font-semibold font-mono text-[11px] transition-all cursor-pointer ${
+                resolution === '1080p' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               1080p
             </button>
             <button
               onClick={() => setResolution('1440p')}
-              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                resolution === '1440p' ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+              className={`px-3 py-1 rounded-lg font-semibold font-mono text-[11px] transition-all cursor-pointer ${
+                resolution === '1440p' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              1440p
+              1440p Quad HD
             </button>
           </div>
 
-          <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 text-xs">
+          <div className="flex bg-[#07090e] border border-[#1b2030] rounded-xl p-1 text-xs">
             <button
               onClick={() => setPreset('Medium')}
-              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                preset === 'Medium' ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+              className={`px-3 py-1 rounded-lg font-semibold text-[11px] transition-all cursor-pointer ${
+                preset === 'Medium' ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Médio
+              Qualidade Média
             </button>
             <button
               onClick={() => setPreset('Ultra')}
-              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                preset === 'Ultra' ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+              className={`px-3 py-1 rounded-lg font-semibold text-[11px] transition-all cursor-pointer ${
+                preset === 'Ultra' ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Ultra
+              Qualidade Ultra
             </button>
           </div>
         </div>
@@ -186,14 +186,14 @@ export const FpsPredictor: React.FC<FpsPredictorProps> = ({
 
       {/* Hardware Warning if empty */}
       {!hasHardware && (
-        <div className="text-center py-8 text-xs text-zinc-600 border border-dashed border-zinc-900 rounded-lg">
-          Selecione um Processador ou Placa de Vídeo para ver a estimativa de FPS em tempo real.
+        <div className="text-center py-10 text-xs text-slate-500 border border-dashed border-[#1b2030] rounded-2xl bg-[#07090e]/30 font-mono">
+          Selecione um Processador ou Placa de Vídeo no painel de controle para visualizar os benchmarks previstos.
         </div>
       )}
 
       {/* Game Cards Grid */}
       {hasHardware && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {GAMES.map((game) => {
             const fps = calculateFps(game);
             const badge = getFpsBadge(fps);
@@ -203,37 +203,37 @@ export const FpsPredictor: React.FC<FpsPredictorProps> = ({
             return (
               <div
                 key={game.id}
-                className={`p-3.5 rounded-lg border border-zinc-800/80 bg-gradient-to-br ${game.imageBg} flex flex-col justify-between space-y-3 relative overflow-hidden group hover:border-zinc-700 transition-all`}
+                className={`p-4 rounded-2xl border border-[#1d2438] bg-gradient-to-br ${game.imageBg} bg-[#0b0f19] flex flex-col justify-between space-y-3.5 relative overflow-hidden group hover:border-indigo-500/40 transition-all shadow-md`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-semibold">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-slate-500 font-bold">
                       {game.category}
                     </span>
-                    <h4 className="text-xs font-bold text-zinc-100 truncate mt-0.5">
+                    <h4 className="text-xs font-bold text-slate-100 truncate mt-0.5 font-sans">
                       {game.name}
                     </h4>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-xl font-extrabold text-zinc-100 font-mono tracking-tight">
+                    <span className="text-2xl font-black text-slate-100 font-mono tracking-tight group-hover:text-cyan-300 transition-colors">
                       {fps}
                     </span>
-                    <span className="text-[10px] text-zinc-400 font-semibold ml-1">FPS</span>
+                    <span className="text-[10px] text-slate-400 font-mono font-bold ml-1">FPS</span>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex justify-between items-center text-[10px]">
-                    <span className={`px-2 py-0.5 rounded border ${badge.color} font-semibold`}>
+                    <span className={`px-2 py-0.5 rounded-md border ${badge.color} font-bold font-sans`}>
                       {badge.label}
                     </span>
-                    <span className="text-zinc-500 font-mono">{resolution} • {preset}</span>
+                    <span className="text-slate-400 font-mono text-[9px]">{resolution} • {preset}</span>
                   </div>
 
                   {/* Animated Bar */}
-                  <div className="w-full bg-zinc-950/80 border border-zinc-900 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-[#07090e] border border-[#1b2030] rounded-full h-2 overflow-hidden p-0.5">
                     <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-500"
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 transition-all duration-500"
                       style={{ width: `${percentage}%` }}
                     ></div>
                   </div>
@@ -246,3 +246,4 @@ export const FpsPredictor: React.FC<FpsPredictorProps> = ({
     </div>
   );
 };
+

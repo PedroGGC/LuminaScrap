@@ -38,8 +38,41 @@ export interface StorageProduct extends BaseProduct {
   specs: { capacity: string; storageType: string };
 }
 
-export type Product = CpuProduct | GpuProduct | RamProduct | MotherboardProduct | PsuProduct | StorageProduct;
-export type ProductCategory = 'cpu' | 'gpu' | 'ram' | 'motherboard' | 'psu' | 'storage';
+export interface MonitorProduct extends BaseProduct {
+  type: 'monitor';
+  specs: { resolution?: string; refreshRate?: string };
+}
+
+export interface KeyboardProduct extends BaseProduct {
+  type: 'keyboard';
+  specs: { switchType?: string; layout?: string };
+}
+
+export interface OtherProduct extends BaseProduct {
+  type: 'other' | 'software' | 'case' | 'mouse';
+  specs: Record<string, any>;
+}
+
+export type Product =
+  | CpuProduct
+  | GpuProduct
+  | RamProduct
+  | MotherboardProduct
+  | PsuProduct
+  | StorageProduct
+  | MonitorProduct
+  | KeyboardProduct
+  | OtherProduct;
+
+export type ProductCategory =
+  | 'cpu'
+  | 'gpu'
+  | 'ram'
+  | 'motherboard'
+  | 'psu'
+  | 'storage'
+  | 'monitor'
+  | 'keyboard';
 
 export interface ProductsData {
   cpu: CpuProduct[];
@@ -48,6 +81,8 @@ export interface ProductsData {
   motherboard: MotherboardProduct[];
   psu: PsuProduct[];
   storage: StorageProduct[];
+  monitor?: MonitorProduct[];
+  keyboard?: KeyboardProduct[];
 }
 
 export interface BenchmarkScores {

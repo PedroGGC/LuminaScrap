@@ -10,7 +10,7 @@ import {
   DBProduct,
   Offer,
 } from '@/lib/productDb';
-import { enrichProductWithScraperApi } from '@/lib/scraperService';
+import { enrichProductWithScraperApi, normalizeProductUrl } from '@/lib/scraperService';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
@@ -35,9 +35,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const itemTitle = (title || raw_text || 'Produto Hardware').trim();
-    const type = mapCategoryToType(category || '');
-    const normalizedLink = cleanUrl(link);
-    const storeSource = getStoreFromUrl(normalizedLink || link);
+    const type = mapCategoryToType(category || '', itemTitle);
+    const resolvedLink = await normalizeProductUrl(link);
+    const normalizedLink = cleanUrl(resolvedLink);
+    const storeSource = getStoreFromUrl(resolvedLink || link, source);
     const numPrice = typeof price === 'number' ? price : parseFloat(price);
 
     const products = await loadProducts();

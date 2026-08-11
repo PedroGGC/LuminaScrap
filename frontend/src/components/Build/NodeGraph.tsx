@@ -23,52 +23,52 @@ const CustomHardwareNode = ({ data }: any) => {
   const isSelected = !!data.product;
 
   return (
-    <div className={`glass-node w-56 text-left relative ${
+    <div className={`glass-panel w-60 text-left p-3.5 relative transition-all duration-300 ${
       data.hasError
-        ? 'border-red-500/50 bg-red-950/20 shadow-red-950/20'
+        ? 'border-rose-500/60 bg-rose-950/20 shadow-lg shadow-rose-950/30'
         : data.hasWarning
-        ? 'border-amber-500/50 bg-amber-950/10 shadow-amber-950/10'
+        ? 'border-amber-500/60 bg-amber-950/20 shadow-lg shadow-amber-950/30'
         : isSelected
-        ? 'border-indigo-500/50 bg-indigo-950/10'
-        : 'border-zinc-800 bg-zinc-950/60'
+        ? 'border-indigo-500/50 bg-[#0c101c]/90 shadow-lg shadow-indigo-950/30'
+        : 'border-[#1b2030] bg-[#070a12]/70'
     }`}>
       {/* React Flow Handles */}
       {data.targetHandle && (
         <Handle
           type="target"
           position={data.targetPosition || Position.Left}
-          style={{ background: '#3f3f46', border: '1px solid #27272a' }}
+          style={{ background: isSelected ? '#38bdf8' : '#1e293b', border: '2px solid #090d16', width: 10, height: 10 }}
         />
       )}
       {data.sourceHandle && (
         <Handle
           type="source"
           position={data.sourcePosition || Position.Right}
-          style={{ background: '#3f3f46', border: '1px solid #27272a' }}
+          style={{ background: isSelected ? '#6366f1' : '#1e293b', border: '2px solid #090d16', width: 10, height: 10 }}
         />
       )}
 
       <div className="flex items-center gap-2 mb-1.5">
-        <span className={`${
+        <span className={`p-1 rounded-md ${
           data.hasError
-            ? 'text-red-400'
+            ? 'bg-rose-500/20 text-rose-400'
             : isSelected
-            ? 'text-indigo-400'
-            : 'text-zinc-500'
+            ? 'bg-indigo-500/20 text-cyan-400'
+            : 'bg-[#121624] text-slate-500'
         }`}>
           <Icon size={14} />
         </span>
-        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{data.label}</span>
+        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">{data.label}</span>
       </div>
 
-      <div className="text-[11px] font-semibold text-zinc-100 truncate pr-2 leading-snug">
-        {isSelected ? data.product.name : 'Não Selecionado'}
+      <div className="text-[11px] font-semibold text-slate-100 truncate leading-snug font-sans">
+        {isSelected ? data.product.name : 'Componente ausente'}
       </div>
 
-      <div className="flex justify-between items-center mt-1.5 text-[9px] font-mono text-zinc-500">
-        <div>{isSelected ? data.specValue : '—'}</div>
+      <div className="flex justify-between items-center mt-2 pt-2 border-t border-[#1b2030] text-[9px] font-mono text-slate-400">
+        <div className="truncate max-w-[120px]">{isSelected ? data.specValue : 'Selecione'}</div>
         {isSelected && (
-          <div className="text-emerald-400 font-bold">
+          <div className="text-emerald-400 font-bold text-[10px]">
             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data.product.priceCash)}
           </div>
         )}
@@ -103,7 +103,7 @@ export const NodeGraph: React.FC<NodeGraphProps> = ({ build, validation }) => {
       {
         id: 'mb',
         type: 'hardware',
-        position: { x: 200, y: 180 },
+        position: { x: 220, y: 180 },
         data: {
           label: 'Placa-Mãe',
           icon: CircuitBoard,
@@ -119,7 +119,7 @@ export const NodeGraph: React.FC<NodeGraphProps> = ({ build, validation }) => {
       {
         id: 'cpu',
         type: 'hardware',
-        position: { x: 200, y: 20 },
+        position: { x: 220, y: 10 },
         data: {
           label: 'Processador (CPU)',
           icon: Cpu,
@@ -133,7 +133,7 @@ export const NodeGraph: React.FC<NodeGraphProps> = ({ build, validation }) => {
       {
         id: 'gpu',
         type: 'hardware',
-        position: { x: 200, y: 340 },
+        position: { x: 220, y: 350 },
         data: {
           label: 'Placa de Vídeo (GPU)',
           icon: Monitor,
@@ -146,7 +146,7 @@ export const NodeGraph: React.FC<NodeGraphProps> = ({ build, validation }) => {
       {
         id: 'ram',
         type: 'hardware',
-        position: { x: 480, y: 180 },
+        position: { x: 520, y: 180 },
         data: {
           label: 'Memória RAM',
           icon: Layers,
@@ -160,9 +160,9 @@ export const NodeGraph: React.FC<NodeGraphProps> = ({ build, validation }) => {
       {
         id: 'storage',
         type: 'hardware',
-        position: { x: 480, y: 340 },
+        position: { x: 520, y: 350 },
         data: {
-          label: 'Armazenamento (SSD / HD)',
+          label: 'Armazenamento',
           icon: HardDrive,
           product: build.storage,
           specValue: build.storage ? `${build.storage.specs.capacity} • ${build.storage.specs.storageType}` : '',
@@ -194,68 +194,67 @@ export const NodeGraph: React.FC<NodeGraphProps> = ({ build, validation }) => {
         id: 'cpu-mb',
         source: 'cpu',
         target: 'mb',
-        targetHandle: 'mb-target-top', // React Flow will resolve appropriately
-        animated: socketMismatch,
+        animated: socketMismatch || (!!build.cpu && !!build.motherboard),
         style: socketMismatch
-          ? { stroke: '#ef4444', strokeWidth: 3 }
+          ? { stroke: '#f43f5e', strokeWidth: 3 }
           : build.cpu && build.motherboard
           ? { stroke: '#6366f1', strokeWidth: 2 }
-          : { stroke: '#27272a', strokeWidth: 1.5 },
+          : { stroke: '#1e293b', strokeWidth: 1.5 },
       },
       {
         id: 'ram-mb',
         source: 'mb',
         target: 'ram',
-        animated: ramMismatch,
+        animated: ramMismatch || (!!build.ram && !!build.motherboard),
         style: ramMismatch
-          ? { stroke: '#ef4444', strokeWidth: 3 }
+          ? { stroke: '#f43f5e', strokeWidth: 3 }
           : build.ram && build.motherboard
-          ? { stroke: '#6366f1', strokeWidth: 2 }
-          : { stroke: '#27272a', strokeWidth: 1.5 },
+          ? { stroke: '#38bdf8', strokeWidth: 2 }
+          : { stroke: '#1e293b', strokeWidth: 1.5 },
       },
       {
         id: 'storage-mb',
         source: 'mb',
         target: 'storage',
-        animated: false,
+        animated: !!build.storage && !!build.motherboard,
         style: build.storage && build.motherboard
-          ? { stroke: '#6366f1', strokeWidth: 2 }
-          : { stroke: '#27272a', strokeWidth: 1.5 },
+          ? { stroke: '#38bdf8', strokeWidth: 2 }
+          : { stroke: '#1e293b', strokeWidth: 1.5 },
       },
       {
         id: 'gpu-mb',
         source: 'gpu',
         target: 'mb',
-        animated: false,
+        animated: !!build.gpu && !!build.motherboard,
         style: build.gpu && build.motherboard
-          ? { stroke: '#6366f1', strokeWidth: 2 }
-          : { stroke: '#27272a', strokeWidth: 1.5 },
+          ? { stroke: '#818cf8', strokeWidth: 2 }
+          : { stroke: '#1e293b', strokeWidth: 1.5 },
       },
       {
         id: 'psu-mb',
         source: 'psu',
         target: 'mb',
-        animated: psuMismatch,
+        animated: psuMismatch || !!build.psu,
         style: psuMismatch
-          ? { stroke: '#ef4444', strokeWidth: 3 }
+          ? { stroke: '#f43f5e', strokeWidth: 3 }
           : build.psu
-          ? { stroke: '#6366f1', strokeWidth: 2 }
-          : { stroke: '#27272a', strokeWidth: 1.5 },
+          ? { stroke: '#10b981', strokeWidth: 2 }
+          : { stroke: '#1e293b', strokeWidth: 1.5 },
       },
     ];
   }, [build, socketMismatch, ramMismatch, psuMismatch]);
 
   return (
-    <div className="flex-1 w-full bg-zinc-950/40 relative">
+    <div className="flex-1 w-full bg-[#05070c] relative min-h-[500px]">
       {/* Tech grid overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f1f2e10_1px,transparent_1px),linear-gradient(to_bottom,#1f1f2e10_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e264015_1px,transparent_1px),linear-gradient(to_bottom,#1e264015_1px,transparent_1px)] bg-[size:28px_28px] pointer-events-none"></div>
 
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: 0.25 }}
         proOptions={{ hideAttribution: true }}
         className="w-full h-full"
       />
@@ -263,3 +262,4 @@ export const NodeGraph: React.FC<NodeGraphProps> = ({ build, validation }) => {
   );
 };
 export default NodeGraph;
+

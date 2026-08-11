@@ -26,6 +26,9 @@ function getCategoryPlaceholder(type: string): string {
   if (t === 'ram') return 'https://placehold.co/600x400/1e293b/94a3b8?text=RAM+Memory';
   if (t === 'psu') return 'https://placehold.co/600x400/78350f/fbbf24?text=Power+Supply';
   if (t === 'storage') return 'https://placehold.co/600x400/134e4a/2dd4bf?text=Storage+SSD';
+  if (t === 'monitor' || t === 'keyboard' || t === 'mouse' || t === 'peripheral') {
+    return 'https://placehold.co/600x400/312e81/c7d2fe?text=Perifericos';
+  }
   return 'https://placehold.co/600x400/1a1a1a/ffffff?text=Hardware';
 }
 
@@ -46,8 +49,61 @@ function formatImageUrl(urlStr: string, targetUrl: string): string {
   return cleaned;
 }
 
+export function extractTargetFromShortener(urlStr: string): string | null {
+  if (!urlStr) return null;
+  try {
+    let decodedUrl = urlStr;
+    try {
+      decodedUrl = decodeURIComponent(urlStr);
+    } catch {}
+
+    const parsed = new URL(urlStr);
+    for (const [, rawVal] of parsed.searchParams.entries()) {
+      let val = rawVal;
+      try {
+        val = decodeURIComponent(rawVal);
+      } catch {}
+
+      if (val.includes('http://') || val.includes('https://')) {
+        const match = val.match(/https?:\/\/[^\s"'<>]+/i);
+        const candidate = match ? match[0] : val;
+        const candidateLower = candidate.toLowerCase();
+
+        if (
+          candidateLower.includes('kabum.com.br') ||
+          candidateLower.includes('terabyteshop.com.br') ||
+          candidateLower.includes('pichau.com.br') ||
+          candidateLower.includes('amazon.com') ||
+          candidateLower.includes('mercadolivre.com') ||
+          candidateLower.includes('magazineluiza.com') ||
+          candidateLower.includes('aliexpress.com') ||
+          candidateLower.includes('shopee.com')
+        ) {
+          return candidate;
+        }
+      }
+    }
+
+    // Se a própria URL decodificada contém o link da loja embutido
+    const inlineMatch = decodedUrl.match(/https?:\/\/(?:www\.)?(?:kabum\.com\.br|terabyteshop\.com\.br|pichau\.com\.br|amazon\.com|mercadolivre\.com|magazineluiza\.com|shopee\.com|aliexpress\.com)[^\s"'<>]*/i);
+    if (inlineMatch && inlineMatch[0]) {
+      return inlineMatch[0];
+    }
+  } catch {
+    // Ignore URL parse error
+  }
+  return null;
+}
+
 export async function resolveFinalUrl(initialUrl: string): Promise<string> {
   if (!initialUrl) return initialUrl;
+
+  const quickTarget = extractTargetFromShortener(initialUrl);
+  if (quickTarget) {
+    console.log(`[URL Resolver] Link extraído dos parâmetros de "${initialUrl}" -> "${quickTarget}"`);
+    return quickTarget;
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -63,12 +119,18 @@ export async function resolveFinalUrl(initialUrl: string): Promise<string> {
     });
     clearTimeout(timeoutId);
 
-    if (res.url && res.url !== initialUrl && res.ok) {
-      console.log(`[URL Resolver] Link desencurtado via HEAD de "${initialUrl}" -> "${res.url}"`);
-      return res.url;
+    let finalUrl = (res.url && res.url !== initialUrl && res.ok) ? res.url : '';
+    let extracted = finalUrl ? extractTargetFromShortener(finalUrl) : null;
+    if (extracted) {
+      console.log(`[URL Resolver] Link de loja extraído do redirect HEAD de "${initialUrl}" -> "${extracted}"`);
+      return extracted;
+    }
+    if (finalUrl && !finalUrl.includes('awin1.com') && !finalUrl.includes('tidd.ly')) {
+      console.log(`[URL Resolver] Link desencurtado via HEAD de "${initialUrl}" -> "${finalUrl}"`);
+      return finalUrl;
     }
 
-    // Se HEAD falhar ou retornar a mesma URL, tentar GET leve
+    // Se HEAD falhar ou retornar intermediário de afiliado (ex: awin1.com), tentar GET
     const controllerGet = new AbortController();
     const timeoutIdGet = setTimeout(() => controllerGet.abort(), 5000);
     res = await fetch(initialUrl, {
@@ -82,12 +144,26 @@ export async function resolveFinalUrl(initialUrl: string): Promise<string> {
     });
     clearTimeout(timeoutIdGet);
 
-    if (res.url && res.url !== initialUrl) {
-      console.log(`[URL Resolver] Link desencurtado via GET de "${initialUrl}" -> "${res.url}"`);
-      return res.url;
+    finalUrl = res.url || initialUrl;
+    extracted = extractTargetFromShortener(finalUrl);
+    if (extracted) {
+      console.log(`[URL Resolver] Link de loja extraído do redirect GET de "${initialUrl}" -> "${extracted}"`);
+      return extracted;
     }
 
-    return res.url || initialUrl;
+    // Tentar ler corpo do HTML por links de loja ou meta refresh
+    try {
+      const htmlText = await res.text();
+      const storeUrlMatch = htmlText.match(/https?:\/\/[^\s"'<>]*(?:kabum\.com\.br|terabyteshop\.com\.br|pichau\.com\.br|amazon\.com|mercadolivre\.com|magazineluiza\.com|shopee\.com|aliexpress\.com)[^\s"'<>]*/i);
+      if (storeUrlMatch && storeUrlMatch[0]) {
+        let extractedFromHtml = storeUrlMatch[0];
+        try { extractedFromHtml = decodeURIComponent(extractedFromHtml); } catch {}
+        console.log(`[URL Resolver] Link extraído do HTML de "${initialUrl}" -> "${extractedFromHtml}"`);
+        return extractedFromHtml;
+      }
+    } catch {}
+
+    return finalUrl;
   } catch (err) {
     console.warn(`[URL Resolver] Não foi possível desencurtar "${initialUrl}":`, err);
     return initialUrl;
@@ -96,20 +172,15 @@ export async function resolveFinalUrl(initialUrl: string): Promise<string> {
 
 export async function normalizeProductUrl(urlStr: string): Promise<string> {
   if (!urlStr) return urlStr;
-  const lower = urlStr.toLowerCase();
 
-  const isAmazon = lower.includes('amazon') || lower.includes('amzn') || lower.includes('link.amazon');
-  const isShopee = lower.includes('shopee') || lower.includes('s.shopee.com.br');
+  const quickTarget = extractTargetFromShortener(urlStr);
+  const targetToResolve = quickTarget || urlStr;
 
-  if (!isAmazon && !isShopee) {
-    return urlStr;
-  }
-
-  // Desencurta o link primeiro
-  const resolvedUrl = await resolveFinalUrl(urlStr);
+  // Desencurta o link
+  const resolvedUrl = await resolveFinalUrl(targetToResolve);
   const resolvedLower = resolvedUrl.toLowerCase();
 
-  if (isAmazon || resolvedLower.includes('amazon') || resolvedLower.includes('amzn')) {
+  if (resolvedLower.includes('amazon') || resolvedLower.includes('amzn')) {
     // Regex para extrair ASIN real da URL final resolvida
     const asinMatch =
       resolvedUrl.match(/\/dp\/([A-Z0-9]{10})/i) ||
@@ -123,11 +194,6 @@ export async function normalizeProductUrl(urlStr: string): Promise<string> {
       console.log(`[Amazon Scraper] ASIN real extraído (${realAsin}). URL canônica: ${canonical}`);
       return canonical;
     }
-    return resolvedUrl;
-  }
-
-  if (isShopee || resolvedLower.includes('shopee')) {
-    console.log(`[Shopee Scraper] URL resolvida: ${resolvedUrl}`);
     return resolvedUrl;
   }
 

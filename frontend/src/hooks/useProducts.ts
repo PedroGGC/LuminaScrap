@@ -48,6 +48,8 @@ export function useProducts() {
             motherboard: rawProducts.filter((p: Product) => p.type === 'motherboard') as any,
             psu: rawProducts.filter((p: Product) => p.type === 'psu') as any,
             storage: rawProducts.filter((p: Product) => p.type === 'storage') as any,
+            monitor: rawProducts.filter((p: Product) => p.type === 'monitor') as any,
+            keyboard: rawProducts.filter((p: Product) => p.type === 'keyboard') as any,
           };
         } else {
           structuredProducts = {
@@ -57,6 +59,8 @@ export function useProducts() {
             ram: rawProducts.ram || [],
             psu: rawProducts.psu || [],
             storage: rawProducts.storage || [],
+            monitor: rawProducts.monitor || [],
+            keyboard: rawProducts.keyboard || [],
           };
           flatList = [
             ...(rawProducts.cpu || []),
@@ -65,6 +69,8 @@ export function useProducts() {
             ...(rawProducts.ram || []),
             ...(rawProducts.psu || []),
             ...(rawProducts.storage || []),
+            ...(rawProducts.monitor || []),
+            ...(rawProducts.keyboard || []),
           ];
         }
 
