@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // PRODUTO JÁ EXISTE NO BANCO -> Registra/Atualiza a oferta (0 requisições externas!)
       const product = matchResult.product;
       const existingOfferIndex = product.offers.findIndex(
-        (o) => cleanUrl(o.link) === normalizedLink || o.source.toLowerCase() === storeSource.toLowerCase()
+        (o) => cleanUrl(o.link) === normalizedLink
       );
 
       if (existingOfferIndex >= 0) {

@@ -261,25 +261,44 @@ export function generateProductSlug(title: string, type: string, specs?: Record<
 
   const parts: string[] = [type];
 
+  // 1. Extrai marca
+  const brandMatch = clean.match(/\b(msi|asus|gigabyte|galax|zotac|pny|asrock|inno3d|palit|xfx|sapphire|powercolor|colorful|gainward|evga|corsair|kingston|xpg|adata|fury|crucial|gskill|teamgroup|lexar|netac|redragon|logitech|razer|hyperx|steelseries|ajazz|akko|vxe|deepcool|thermalright|cooler-master|superflower|seasonic|gamemax|aoc|lg|samsung|dell|alienware|benq|philips|mancer|pichau|tgt|superframe|intel|amd)\b/i);
+  if (brandMatch) {
+    parts.push(brandMatch[1]);
+  }
+
+  // 2. Extrai variante/linha do modelo
+  const variantMatch = clean.match(/\b(ventus|shadow|dual|tuf|rog|strix|aorus|eagle|windforce|gaming-oc|gaming-x|gaming|prime|pro|phoenix|pulse|nitro|speedster|merc|swft|qick|ghost|twin-edge|amp|trinity|verto|ex-gamer|valkyrie|steel-legend|phantom|proart|master|elite|creator|breeze|mech|vision|suprim)\b/i);
+  if (variantMatch && !parts.includes(variantMatch[1])) {
+    parts.push(variantMatch[1]);
+  }
+
+  // 3. Extrai especificações por categoria
   if (type === 'gpu') {
     const gpuMatch = clean.match(/(rtx-\d{4}-ti-super|rtx-\d{4}-super|rtx-\d{4}-ti|rtx-\d{4}|gtx-\d{4}|gtx-\d{3}|rx-\d{4}-xtx|rx-\d{4}-xt|rx-\d{4}|arc-[ab]\d{3})/i);
-    if (gpuMatch) parts.push(gpuMatch[1]);
+    if (gpuMatch && !parts.includes(gpuMatch[1])) parts.push(gpuMatch[1]);
     const vramMatch = clean.match(/(\d{1,2}gb)/i);
-    if (vramMatch) parts.push(vramMatch[1]);
+    if (vramMatch && !parts.includes(vramMatch[1])) parts.push(vramMatch[1]);
   } else if (type === 'cpu') {
     const cpuMatch = clean.match(/(ryzen-[3579]-\d{4}[x3d]*|core-i[3579]-\d{4,5}[kfa]*|i[3579]-\d{4,5}|r[3579]-\d{4})/i);
-    if (cpuMatch) parts.push(cpuMatch[1]);
+    if (cpuMatch && !parts.includes(cpuMatch[1])) parts.push(cpuMatch[1]);
   } else if (type === 'motherboard') {
     const mbMatch = clean.match(/(a520|b550|b650|a620|x670|b760|z790|h610|b450)m?/i);
-    if (mbMatch) parts.push(mbMatch[0]);
+    if (mbMatch && !parts.includes(mbMatch[0])) parts.push(mbMatch[0]);
   } else if (type === 'ram') {
     const ddrMatch = clean.match(/(ddr[45])/i);
-    if (ddrMatch) parts.push(ddrMatch[1]);
+    if (ddrMatch && !parts.includes(ddrMatch[1])) parts.push(ddrMatch[1]);
     const capMatch = clean.match(/(\d{1,2}gb)/i);
-    if (capMatch) parts.push(capMatch[1]);
+    if (capMatch && !parts.includes(capMatch[1])) parts.push(capMatch[1]);
   } else if (type === 'psu') {
     const psuMatch = clean.match(/(\d{3,4}w)/i);
-    if (psuMatch) parts.push(psuMatch[1]);
+    if (psuMatch && !parts.includes(psuMatch[1])) parts.push(psuMatch[1]);
+  } else if (type === 'storage') {
+    const capMatch = clean.match(/(\d{3,4}gb|\d{1}tb)/i);
+    if (capMatch && !parts.includes(capMatch[1])) parts.push(capMatch[1]);
+  } else if (type === 'monitor') {
+    const hzMatch = clean.match(/(\d{2,3}hz)/i);
+    if (hzMatch && !parts.includes(hzMatch[1])) parts.push(hzMatch[1]);
   }
 
   if (parts.length > 1) {
@@ -354,21 +373,15 @@ export function findProduct(
   title: string,
   type: string
 ): { found: boolean; product?: DBProduct } {
+  // 1. Match estrito por URL de anúncio
   const urlMatch = products.find((p) =>
     p.offers.some((o) => cleanUrl(o.link) === normalizedLink) || cleanUrl(p.link) === normalizedLink
   );
   if (urlMatch) return { found: true, product: urlMatch };
 
+  // 2. Match por slug específico (incluindo marca e variante do modelo)
   const slugMatch = products.find((p) => p.slug === slug || p.id === slug);
   if (slugMatch) return { found: true, product: slugMatch };
-
-  const lowerTitle = title.toLowerCase();
-  const nameMatch = products.find((p) => {
-    if (p.type !== type) return false;
-    const lowerPName = p.name.toLowerCase();
-    return lowerPName.includes(lowerTitle) || lowerTitle.includes(lowerPName);
-  });
-  if (nameMatch) return { found: true, product: nameMatch };
 
   return { found: false };
 }
