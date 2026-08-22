@@ -1,4 +1,6 @@
 export interface BaseProduct {
+  id?: string;
+  slug?: string;
   source: string;
   name: string;
   priceCash: number;
@@ -6,6 +8,9 @@ export interface BaseProduct {
   link: string;
   image: string;
   isWhiteLabel: boolean;
+  offers?: any[];
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 export interface CpuProduct extends BaseProduct {

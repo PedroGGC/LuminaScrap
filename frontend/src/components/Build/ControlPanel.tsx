@@ -30,11 +30,16 @@ const CategorySelect: React.FC<CategorySelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name'>('price-asc');
+  const [sortBy, setSortBy] = useState<'recent' | 'price-asc' | 'price-desc' | 'name'>('price-asc');
 
   const filtered = options
     .filter(opt => opt.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
+      if (sortBy === 'recent') {
+        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return timeB - timeA;
+      }
       if (sortBy === 'price-asc') return a.priceCash - b.priceCash;
       if (sortBy === 'price-desc') return b.priceCash - a.priceCash;
       return a.name.localeCompare(b.name);
@@ -176,6 +181,7 @@ const CategorySelect: React.FC<CategorySelectProps> = ({
               onChange={(e) => setSortBy(e.target.value as any)}
               className="bg-[#07090e] border border-[#1b2030] rounded-lg px-2 py-1.5 text-[11px] text-slate-300 outline-none cursor-pointer font-medium"
             >
+              <option value="recent">Mais Recentes</option>
               <option value="price-asc">Menor Preço</option>
               <option value="price-desc">Maior Preço</option>
               <option value="name">Nome (A-Z)</option>

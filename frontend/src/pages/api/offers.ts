@@ -44,6 +44,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const products = await loadProducts();
     const slug = generateProductSlug(itemTitle, type, raw_specs_regex);
 
+    // Extrai e normaliza o timestamp da oferta (Telegram/Scraper)
+    let offerTimestampIso = new Date().toISOString();
+    if (timestamp !== undefined && timestamp !== null) {
+      const tsNum = typeof timestamp === 'number' ? timestamp : parseFloat(timestamp);
+      if (!isNaN(tsNum)) {
+        const ms = tsNum < 10000000000 ? tsNum * 1000 : tsNum;
+        const d = new Date(ms);
+        if (!isNaN(d.getTime())) {
+          offerTimestampIso = d.toISOString();
+        }
+      } else {
+        const parsed = new Date(timestamp);
+        if (!isNaN(parsed.getTime())) {
+          offerTimestampIso = parsed.toISOString();
+        }
+      }
+    }
+
     // 1. CHECAGEM DE CACHE NO BANCO DE DADOS
     const matchResult = findProduct(products, slug, normalizedLink, itemTitle, type);
 
@@ -54,8 +72,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (o) => cleanUrl(o.link) === normalizedLink || o.source.toLowerCase() === storeSource.toLowerCase()
       );
 
-      const nowIso = new Date().toISOString();
-
       if (existingOfferIndex >= 0) {
         product.offers[existingOfferIndex] = {
           ...product.offers[existingOfferIndex],
@@ -63,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           priceInstallment: Math.round(numPrice * 1.08 * 100) / 100,
           link: normalizedLink,
           coupon: coupon || product.offers[existingOfferIndex].coupon || '',
-          lastSeenAt: nowIso,
+          lastSeenAt: offerTimestampIso,
         };
       } else {
         product.offers.push({
@@ -73,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           priceInstallment: Math.round(numPrice * 1.08 * 100) / 100,
           link: normalizedLink,
           coupon: coupon || '',
-          lastSeenAt: nowIso,
+          lastSeenAt: offerTimestampIso,
         });
       }
 
@@ -87,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       product.priceInstallment = bestOffer.priceInstallment;
       product.link = bestOffer.link;
       product.source = bestOffer.source;
-      product.updatedAt = nowIso;
+      product.updatedAt = offerTimestampIso;
 
       await saveProducts(products);
 
@@ -111,7 +127,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       raw_specs_regex || {}
     );
 
-    const nowIso = new Date().toISOString();
     const newOffer: Offer = {
       id: `off-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       source: storeSource,
@@ -119,7 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       priceInstallment: Math.round(numPrice * 1.08 * 100) / 100,
       link: normalizedLink,
       coupon: coupon || '',
-      lastSeenAt: nowIso,
+      lastSeenAt: offerTimestampIso,
     };
 
     const newProduct: DBProduct = {
@@ -135,8 +150,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       priceInstallment: Math.round(numPrice * 1.08 * 100) / 100,
       link: normalizedLink,
       source: storeSource,
-      updatedAt: nowIso,
-      createdAt: nowIso,
+      updatedAt: offerTimestampIso,
+      createdAt: offerTimestampIso,
     };
 
     products.push(newProduct);

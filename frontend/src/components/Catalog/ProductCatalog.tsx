@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, SlidersHorizontal, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, X, ArrowUpDown, Sparkles, Store, Cpu, Zap, ShieldCheck } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, X, ArrowUpDown, Sparkles, Store, Cpu, Zap, ShieldCheck, Clock } from 'lucide-react';
 import { Product } from '@/types/hardware';
 
 interface ProductCatalogProps {
@@ -15,7 +15,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
   const [selectedRamGen, setSelectedRamGen] = useState<string>('all');
   const [hideWhiteLabel, setHideWhiteLabel] = useState(false);
   const [maxPrice, setMaxPrice] = useState<number>(20000);
-  const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name'>('price-asc');
+  const [sortBy, setSortBy] = useState<'recent' | 'price-asc' | 'price-desc' | 'name'>('recent');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 30;
 
@@ -107,6 +107,11 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
 
       return true;
     }).sort((a, b) => {
+      if (sortBy === 'recent') {
+        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return timeB - timeA;
+      }
       if (sortBy === 'price-asc') return a.priceCash - b.priceCash;
       if (sortBy === 'price-desc') return b.priceCash - a.priceCash;
       return a.name.localeCompare(b.name);
@@ -130,6 +135,25 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
       style: 'currency',
       currency: 'BRL',
     }).format(price);
+  };
+
+  const formatTimeAgo = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    if (isNaN(diffMs) || diffMs < 0) return 'Recentemente';
+
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Agora';
+    if (diffMins < 60) return `Há ${diffMins}m`;
+    if (diffHours < 24) return `Há ${diffHours}h`;
+    if (diffDays === 1) return 'Ontem';
+    if (diffDays < 7) return `Há ${diffDays}d`;
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
 
   const getSpecBadge = (p: Product) => {
@@ -373,6 +397,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="bg-[#07090e]/90 border border-[#1b2030] rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-indigo-500/60 transition-colors cursor-pointer font-medium"
               >
+                <option value="recent">Mais Recentes</option>
                 <option value="price-asc">Menor Preço à Vista</option>
                 <option value="price-desc">Maior Preço à Vista</option>
                 <option value="name">Nome (A-Z)</option>
@@ -440,6 +465,15 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                       <span className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-[#161b29] border border-[#232b3f] text-slate-300 font-medium">
                         {getSpecBadge(p)}
                       </span>
+                      {(p.updatedAt || p.createdAt) && (
+                        <span
+                          className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-medium flex items-center gap-1 ml-auto"
+                          title={p.updatedAt ? `Atualizado em: ${new Date(p.updatedAt).toLocaleString('pt-BR')}` : undefined}
+                        >
+                          <Clock size={10} />
+                          {formatTimeAgo(p.updatedAt || p.createdAt)}
+                        </span>
+                      )}
                     </div>
 
                     {/* Product Name */}
